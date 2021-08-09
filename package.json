@@ -1,0 +1,22 @@
+{
+  "name": "calibra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build"
+  },
+  "dependencies": {
+    "core-js": "^3.6.5",
+    "eventemitter3": "^4.0.7",
+    "jsplumb": "^2.15.6",
+    "reconnecting-websocket": "^4.4.0",
+    "vue": "^2.6.11",
+    "vue-drag-resize": "^1.5.4"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~4.5.0",
+    "@vue/cli-service": "~4.5.0",
+    "vue-template-compiler": "^2.6.11"
+  }
+}
