@@ -9,18 +9,21 @@
 
 <script>
 
-const Ports = {
-    input: [],
-    output: 'Orderbook'
+const Settings = {
+    ports: {
+        input: [],
+        output: 'Orderbook'
+    },
+    connections: 10
 }
 
 
 import Title from './common/Title.vue';
-
+const Clone = o => o ? JSON.parse( JSON.stringify( o )) : null;
 
 export default {    
 
-    props: ['config', 'size', 'id', 'listeners'],
+    props: ['config', 'size', 'id', 'outputs', 'inputs'],
 
     components: { Title },
 
@@ -32,18 +35,47 @@ export default {
 
             frequency: 500,
 
+            orderbook: null,
             snapshot: null,
 
             timer: null
         }
     },
 
+    watch: {
+        outputs: {
+
+            immediate: true,
+            deep: true,
+
+            handler(n ,o ) {
+                
+                if ( this.outputs.length == 0 ) {
+
+                    this.heartbeat( false );
+
+                } else {
+
+                    this.heartbeat( true );
+
+                    // for ( const L of this.outputs ) {
+                    //     $mitt(`${L}:connection`, { input: Settings.ports.output, exchange.symbol: this.symbol })
+                    // }
+                }
+            }
+
+        }
+    },
+
     computed: {
+        asset() {
+            return this.config.asset;
+        },
         symbol() {
-            return this.config.symbol;
+            return this.asset.symbol;
         },
         exchange() {
-            return this.config.exchange;
+            return this.asset.exchange;
         }
     },
 
@@ -51,48 +83,88 @@ export default {
     methods: {
 
         update( data ) {
+            
+            this.orderbook = data.orderbook;
             this.snapshot = data.orderbook.snapshot( 3 );
+            this.heartbeat( true );
+
         },
 
 
         notify() {
 
-            for ( const L of this.listeners ) 
-                $mitt.emit(L, { orderbook: this.snapshot } );
+            for ( const L of this.outputs )  {
+
+                $mitt.emit(`${L}:snapshot`, { asset: this.asset, snapshot: this.snapshot } );
+                $mitt.emit(`${L}:orderbook`, { asset: this.asset, orderbook: this.orderbook  } );
+
+            }
+
+        },
+
+        heartbeat( start=true ) {
+
+            if ( start ) {
+
+                if ( this.timer )
+                    return;
+                
+                this.timer = setInterval( () => this.notify() , this.frequency)                
+
+                return;
+
+            } else {
+
+                if ( !this.timer )
+                    return;
+
+                clearInterval( this.timer );
+                this.timer = null;
+
+                return;
+            }
+
+        },
+
+        accept( ) {
+            return { success: false }
+        },
+
+        contract() {
+            return {
+                
+                input: Settings.ports.input,
+                output: Settings.ports.output,
+                asset: this.asset
+
+            }
 
         }
+
 
 
     },
 
     mounted() {
-
-        if ( this.timer )
-            clearInterval( this.timer );
-
-        this.timer = setInterval( () => this.notify() , this.frequency)
-
-        this.socket = $network.socket( this.exchange );
-        this.socket.on(`orderbook:${this.symbol}`, this.update, this );
-        this.socket.orderbook( this.symbol );        
-
+        // this.socket = $network.socket( this.exchange );
+        // this.socket.on(`orderbook:${this.symbol}`, this.update, this );
+        // this.socket.orderbook( this.symbol );        
     },
 
     beforeDestroy() {
-        if ( this.timer )
-            clearInterval( this.timer );
 
-        this.timer = null;
+        this.heartbeat( false );
+
     },
 
 
-    accept( component ) {
-        return false;
-    },
+    // accept( component ) {
+    //     return false;
+    // },
 
-    ports() {
-        return Ports;
-    },
+    // settings() {
+    //     return Settings;
+    // },
 
     test: {
         whatever: 123,

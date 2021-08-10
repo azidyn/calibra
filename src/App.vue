@@ -1,15 +1,17 @@
 <template>
     <div id="app">
 
-        <VueDragResize v-for="(w, index) in comps" :key="index" :w="w.size.width" :h="w.size.height" v-on:resizing="n => resize(n, w)" v-on:dragging="n => resize(n, w)" :id="w.id" dragHandle=".drag" style="background:pink; z-index: 1">
+        <VueDragResize v-for="(w, index) in comps" :key="index" :w="w.size.width" :h="w.size.height" v-on:resizing="n => resize(n, w)" v-on:dragging="n => resize(n, w)" :id="w.id" dragHandle=".drag" style="background:#ccc">
             <!-- <div class="drag noselect" style="background: #aaa">{{ 'orderbook'}}</div> -->
             <component 
                 class="noselect"
+                :ref="`c_${w.id}`"
                 :is="w.component"  
                 :config="w.config" 
                 :size="w.size" 
                 :id="w.id" 
-                :listeners="w.listeners"
+                :inputs="w.inputs"
+                :outputs="w.outputs"
             >
             </component>
         </VueDragResize>
@@ -20,14 +22,20 @@
 <script>
 import VueDragResize from 'vue-drag-resize';
 
-import Orderbook from './components/Orderbook';
-import Imbalance from './components/Imbalance';
+import Orderbook        from './components/Orderbook';
+import Imbalance        from './components/Imbalance';
+import Aggregatebook    from './components/Aggregatebook';
 
-const COMPONENT = {
+const Component = {
     Orderbook,
-    Imbalance
+    Imbalance,
+    Aggregatebook
 };
 
+const GetComp = ( id, refs ) => {
+    const c = refs[`c_${id}`];
+    return c ? (Array.isArray( c ) ? c[0] : c) : null;
+}
 
 const GenID = () => Math.floor( (Math.random() * Date.now()) / 1000 );
 
@@ -37,7 +45,8 @@ export default {
     components: {
         VueDragResize,
         Orderbook,
-        Imbalance
+        Imbalance,
+        Aggregatebook
     },
 
     data() {
@@ -63,16 +72,21 @@ export default {
 
     mounted() {
 
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ exchange: 'bitmex', symbol: 'XBTUSD' }, size: { width: 150, height: 300 }, listeners: [] });
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ exchange: 'bitmex', symbol: 'ETHUSD' }, size: { width: 150, height: 300 }, listeners: []  });
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('bitmex', 'XBTUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
+        return;
+        
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ exchange: 'bitmex', symbol: 'ETHUSD' }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
+        this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
+        // this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
 
-        this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, listeners: []  });
-        this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, listeners: []  });
+        this.comps.push({ id: `ab_${GenID()}`, component: 'Aggregatebook', config:{ }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
 
         const lob1 = this.comps[0];
         const lob2 = this.comps[1];
         const imb1 = this.comps[2];
-        const imb2 = this.comps[3];
+        // const imb2 = this.comps[3];
+
+        const agg1 = this.comps[3];
 
         this.$nextTick( () => {
 
@@ -98,38 +112,67 @@ export default {
                         const tc = this.comps.find( f => f.id == params.targetId );
                         const sc = this.comps.find( f => f.id == params.sourceId );
 
-                        const target = COMPONENT[ tc.component ];
-                        const source = COMPONENT[ sc.component ];
+                        const target = GetComp( params.targetId, this.$refs );
+                        const source = GetComp( params.sourceId, this.$refs );
 
-                        const accept = target.accept( source );
+                        if ( !target || !source )  {
+                            console.error(`Error finding component: `, target, source );
+                            return false
+                        }
+                        
 
-                        if ( accept )
-                            sc.listeners.push( params.targetId )
+                        const verify = target.accept( source.contract() );
 
-                        return accept;
+                        if ( verify.success ) {
+
+                            sc.outputs.push( params.targetId )
+                            tc.inputs++;
+                            return true;
+
+                        } else { 
+
+                            alert( verify.message );
+                            return false;
+
+                        }
+
+
 
                     },
 
                     beforeDetach: params => {
 
-                        // const tc = this.comps.find( f => f.id == params.targetId );
+                        const tc = this.comps.find( f => f.id == params.targetId );
                         const sc = this.comps.find( f => f.id == params.sourceId );
 
+                        const target = GetComp( params.targetId, this.$refs );
+                        const source = GetComp( params.sourceId, this.$refs );
+
+                        target.disconnected( source.contract() );
+
                         // Remove this target from listeners
-                        sc.listeners = sc.listeners.filter( f => f != params.targetId );
+                        sc.outputs = sc.outputs.filter( f => f != params.targetId );
+                        tc.inputs--;
                         
                     },
 
                     anchor: "AutoDefault",
-                    maxConnections: 10,
                     paintStyle: { width: 16, height: 16, stroke: 'red', fill: 'red' }
                 }
 
                 jsPlumb.addEndpoint(lob1.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
                 jsPlumb.addEndpoint(lob2.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
 
-                jsPlumb.addEndpoint(imb1.id, endpointInput );
-                jsPlumb.addEndpoint(imb2.id, endpointInput );
+                // const comp = Component[ imb1.component ];
+
+                let endpointconfig = Object.assign({}, endpointInput, { maxConnections: 5 })
+
+                $print( endpointconfig );
+
+                jsPlumb.addEndpoint(imb1.id, endpointconfig );
+                jsPlumb.addEndpoint(agg1.id, endpointconfig );
+
+                // jsPlumb.addEndpoint(imb2.id, endpointconfig );
 
                 // // jsPlumb.addEndpoint(lob3.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
 

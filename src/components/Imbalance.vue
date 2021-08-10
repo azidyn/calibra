@@ -1,9 +1,12 @@
 <template>
   
     <div>
-        <Title :text="`Imbalance ${id}`"></Title>
-        <div>
+        <Title :text="`Imbalance: ${inputs}`"></Title>
+        <div v-if="inputs > 0">
             {{ balance }}
+        </div>
+        <div v-else>
+            Connect an orderbook!
         </div>
     </div>
 
@@ -14,14 +17,17 @@
 
 import Title from './common/Title.vue';
 
-const Ports = {
-    input: ['Orderbook'],
-    output: 'TimeSeries'
+const Settings = {
+    ports: {
+        input: ['Orderbook'],
+        output: 'TimeSeries'
+    },
+    connections: 1
 };
 
 export default {
 
-    props: ['config', 'size', 'id'],
+    props: ['config', 'size', 'id', 'outputs', 'inputs'],
 
     components: { Title },
 
@@ -49,10 +55,27 @@ export default {
 
         update( data ) {
 
-            this.data = data.orderbook;
+            this.data = data.snapshot;
 
-            this.total.bid = this.data.bid.reduce( (a,c ) => a + c[1], 0 );
-            this.total.ask = this.data.ask.reduce( (a,c ) => a + c[1], 0 );
+            if ( !this.data )
+                return;
+
+            if ( this.data.bid ) this.total.bid = this.data.bid.reduce( (a,c ) => a + c[1], 0 );
+            if ( this.data.ask ) this.total.ask = this.data.ask.reduce( (a,c ) => a + c[1], 0 );
+
+        },
+
+
+        accept( contract ) {
+            return { success: Settings.ports.input.includes( contract.output ) };
+        },
+
+        disconnected( contract ) {
+        },
+
+        contract() {
+
+            return Settings.ports;
 
         }
 
@@ -60,25 +83,25 @@ export default {
 
     mounted() {
 
-        $mitt.on( this.id, this.update );
+        $mitt.on( `${this.id}:snapshot`, this.update );
 
     },
 
 
-    accept( component ) {
+    // accept( component ) {
 
-        if ( Ports.input.includes( component.ports().output ) ) {
-            $print('accepted')
-            return true;
-        }
+    //     if ( Settings.ports.input.includes( component.settings().ports.output ) ) {
+    //         $print('accepted')
+    //         return true;
+    //     }
 
-        $print('failed', component.ports(), Ports.input )
-        return false;
+    //     $print('failed', component.settings().ports, Settings.ports.input )
+    //     return false;
 
-    },
+    // },
 
-    ports() {
-        return Ports;
+    settings() {
+        return Settings;
     }
 
 }
