@@ -1,8 +1,9 @@
 
-const bugger    = buggerit( true );
-const Book      = require('../../../lob');
+// const bugger    = buggerit( true );
+// const Book      = require('../../../lob');
+import Book from '../../../lob'
 
-class Orderbook {
+export default class Orderbook {
 
     constructor() {
 
@@ -86,4 +87,4 @@ class Orderbook {
 }
 
 
-module.exports = Orderbook;
+// module.exports = Orderbook;

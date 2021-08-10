@@ -2,7 +2,7 @@
 
 export default class Bids {
     
-    constructor( useref=false ) {
+    constructor( useref=false, shadow=false ) {
         
         /*
             ordered list of prices which point to an index
@@ -12,18 +12,23 @@ export default class Bids {
                 [ 1234.5, 10000 ]
             ]
         */
-       this.ticks = [];
 
        this.useref = useref;
-       this.r_snapshot = [];
-
-       // Array index pointing to the best quote, must keep track of this
-       this.head = 0;
-
+        
+       this.reset();
        this.set = this.set_bids;
-
+       this.shadow = shadow;
 
     }
+
+    reset( ) {
+        this.ticks = [];
+
+        this.r_snapshot = [];
+ 
+        // Array index pointing to the best quote, must keep track of this
+        this.head = 0;
+     }
 
     peek( price ) {
 
@@ -39,12 +44,17 @@ export default class Bids {
         return null;
     }
 
+    best( ) {
+        return this.ticks[ this.head ];
+    }
 
-    set_bids( price, size ) {
+
+    set_bids( price, size, delta=false ) {
 
         // First insert
         if ( !this.ticks.length ) {
-            this.ticks.push([ price, size ]);
+
+            this.ticks.push( this.shadow ? [ price, size, size ] : [ price, size ]);
             this.head = 0;
             return;
         }
@@ -61,9 +71,13 @@ export default class Bids {
         if ( item[0] == price ) {
 
             // Update the size
-            item[1] = size;
+            let o = item[1];
+            item[1] = delta ? Math.max( 0 , item[1] + size ) : size;
+
+            if ( this.shadow )
+                item[2] = item[1] - o;
           
-            if ( this.head == i && size == 0 ) {
+            if ( this.head == i && item[1] == 0 ) {
 
                 // The current update is on the head which is being deleted!    
                 // Find the next item in the book with volume 
@@ -90,7 +104,7 @@ export default class Bids {
         let ins = after ? i+1 : i ;
 
         // Insert the new price level at array index `ins`
-        this.ticks.splice( ins, 0, [ price, size ] );
+        this.ticks.splice( ins, 0, this.shadow ? [ price, size, size ] : [ price, size ] );
 
         // Inserted a new level in front of the head. `this.head` index must be updated now
         // Note that `this.head` index is invalid now anyway because of the insert
@@ -123,7 +137,7 @@ export default class Bids {
 
 
     // Snapshot of the order book (prices with volume) for a given number of levels
-    snapshot( levels ) {
+    snapshot( levels, maxprice=null ) {
 
         /* 
             Instead of creating a new array object on snapshot
@@ -168,8 +182,11 @@ export default class Bids {
 
             for ( let t=this.head; t>=0; t--) {
 
-                if ( this.ticks[t][1] > 0 ) book.push([ this.ticks[t][0], this.ticks[t][1] ]);
+                if ( this.ticks[t][1] > 0 ) 
+                    book.push( this.shadow ? [ this.ticks[t][0], this.ticks[t][1], this.ticks[t][2] ] : [ this.ticks[t][0], this.ticks[t][1] ] );
+
                 if ( book.length == levels ) break;
+                if ( maxprice && this.ticks[t][0] <= maxprice ) break;
 
             }
 

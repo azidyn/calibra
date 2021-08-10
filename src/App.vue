@@ -72,10 +72,8 @@ export default {
 
     mounted() {
 
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('bitmex', 'XBTUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
-        return;
-        
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ exchange: 'bitmex', symbol: 'ETHUSD' }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('ibybit', 'BTCUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('bitmex', 'XBTUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
         this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
         // this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
 

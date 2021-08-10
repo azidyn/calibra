@@ -1,8 +1,11 @@
 <template>
     <div>
-        <Title :text="`lob ${id}`"/>
-        <div>
-            {{ snapshot }}
+        <Title :text="`${exchange}:${symbol}`"/>
+        <div v-if="snapshot">
+            <!-- {{ snapshot }} -->
+            <div v-for="(bid, index) in snapshot.bid" :key="index">
+                {{ bid }}
+            </div>
         </div>
     </div>
 </template>
@@ -57,10 +60,6 @@ export default {
                 } else {
 
                     this.heartbeat( true );
-
-                    // for ( const L of this.outputs ) {
-                    //     $mitt(`${L}:connection`, { input: Settings.ports.output, exchange.symbol: this.symbol })
-                    // }
                 }
             }
 
@@ -85,7 +84,7 @@ export default {
         update( data ) {
             
             this.orderbook = data.orderbook;
-            this.snapshot = data.orderbook.snapshot( 3 );
+            this.snapshot = data.orderbook.snapshot( 10 );
             this.heartbeat( true );
 
         },

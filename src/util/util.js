@@ -1,23 +1,5 @@
 
-// SAFEGET: Pulls a property at the end of a chain (path) of properties
-// returning default if not found
-// example:
-// let a = { b: { c: { d: { e: 123 } } }}
-// console.log(safeget(a, 'b/c/d/e', -1) );
-// returns: 123
-
-// safeguard against circular refs
-const MAX_ITERATIONS = 10;
-
-// General error
-const DEF_ERR_MSG    = 'Unspecified exchange communication error';
-
-// General server configuration
-const config = require('../../config');
-const request = require('request');
-
-
-module.exports = {
+export default {
 
     H: ( authtoken, extra={} ) => ( { ...extra, headers: { Authorization: `Bearer ${authtoken}` } } ),
 
@@ -209,26 +191,6 @@ module.exports = {
 
         });
     })
-
-}
-
-
-function e_msg( e ) {
-
-    // Is boring old string error
-    if ( typeof e === 'string' || e instanceof String )
-        return e
-
-    // RESTful api error
-    if ( e.body && e.body.error )
-        return e.body.error
-
-    // HTTP error (e.g. timeouts) or simulated http error
-    if ( e.message )
-        return e.message;
-
-    // Unknown catch-all
-    return DEF_ERR_MSG
 
 }
 

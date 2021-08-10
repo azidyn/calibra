@@ -1,7 +1,7 @@
 
 export default class Asks {
 
-    constructor( useref=false ) {
+    constructor( useref=false, shadow=false ) {
         
         /*
             ordered list of prices which point to an index
@@ -12,17 +12,24 @@ export default class Asks {
                 ...
             ]
         */
-       this.ticks = [];
 
-       this.useref = useref;
+        this.useref = useref;
+        this.set = this.set_asks;
 
-       this.r_snapshot = [];
+        this.shadow = shadow;
 
-       // Array index pointing to the best quote, must keep track of this
-       this.head = 0;
+        this.reset();
 
-       this.set = this.set_asks;
+    }
 
+    reset() {
+        this.ticks = [];
+
+        this.r_snapshot = [];
+ 
+        // Array index pointing to the best quote, must keep track of this
+        this.head = 0;
+ 
     }
 
     peek( price ) {
@@ -41,12 +48,16 @@ export default class Asks {
         return null;
     }
 
+    best() {
+        return this.ticks[ this.head ];
+    }
 
-    set_asks( price, size ) {
+
+    set_asks( price, size, delta=false ) {
 
         // First insert
         if ( !this.ticks.length ) {
-            this.ticks.push([ price, size ]);
+            this.ticks.push( this.shadow ? [ price, size, size ] : [ price, size ] );
             this.head = 0;
             return;
         }
@@ -60,11 +71,15 @@ export default class Asks {
 
         // Found an exact (existing price level) match?
         if ( item[0] == price ) {
-
-            // Update the size
-            item[1] = size;
             
-            if ( this.head == i && size == 0 ) {
+            let o = item[1];
+            // Update the size
+            item[1] = delta ? Math.max( 0, item[1] + size ) : size;
+
+            if ( this.shadow )
+                item[2] = item[1] - o;
+            
+            if ( this.head == i && item[1] == 0 ) {
 
                 // The current update is on the head which is being deleted!    
                 // Find the next item in the book with volume 
@@ -91,7 +106,7 @@ export default class Asks {
         let ins = before ? i : i + 1;
 
         // Insert the new price level at array index `ins`
-        this.ticks.splice( ins, 0, [ price, size ] );
+        this.ticks.splice( ins, 0, this.shadow ? [ price, size, size ] : [ price, size ] );
 
         // Inserted a new level in front of the head. `this.head` index must be updated now
         // Note that `this.head` index is invalid now anyway because of the insert
@@ -116,7 +131,7 @@ export default class Asks {
     }    
 
     // Snapshot of the order book (prices with volume) for a given number of levels
-    snapshot( levels ) {
+    snapshot( levels, maxprice=null ) {
 
         if (!this.ticks.length ) return [];
 
@@ -151,8 +166,11 @@ export default class Asks {
             
             for ( let t=this.head; t<this.ticks.length; t++) {
 
-                if ( this.ticks[t][1] > 0 ) book.push( [ this.ticks[t][0], this.ticks[t][1] ] );
+                if ( this.ticks[t][1] > 0 ) 
+                    book.push( this.shadow ? [ this.ticks[t][0], this.ticks[t][1], this.ticks[t][2] ] : [ this.ticks[t][0], this.ticks[t][1] ]  );
+
                 if ( book.length == levels ) break;
+                if ( maxprice && this.ticks[t][0] >= maxprice ) break;
 
             }
 

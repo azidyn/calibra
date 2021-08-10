@@ -1,32 +1,21 @@
 
-const fs                = require('fs');
-const WebSocketClient   = require('../../ws/WebsocketClient');
-const OrderbookManager  = require('./orderbook/OrderbookManager');;
-const Simulate          = require('../../util/simulate');
-const EventEmitter      = require('../../util/EventEmitter');
-const Trade             = require('./trade/Trade');
 
+// const WebSocketClient   = require('../../ws/WebsocketClient');
+// const OrderbookManager  = require('./orderbook/OrderbookManager');;
+// const Simulate          = require('../../util/simulate');
+// const EventEmitter      = require('../../util/EventEmitter');
+// const Trade             = require('./trade/Trade');
+
+import OrderbookManager from './orderbook/OrderbookManager';
+import ReconnectingWebSocket from 'reconnecting-websocket';
+import EventEmitter from 'eventemitter3';
+import Trade from './trade/Trade';
 
 const URI = 'wss://stream.bybit.com/realtime';
-const CAPTURE = null;//'./bybit-btc-l2.json';
 
 let json, topic, messages = [];
 
-
-// Record l2 stream for replay debugging
-if ( CAPTURE != null ) {
-
-    setTimeout( ()=> {
-
-        console.log('writing ', CAPTURE, messages.length)
-        fs.writeFileSync( CAPTURE, JSON.stringify( messages ));
-        process.exit();
-
-    }, 20  * 1000 )
-
-}
-
-class iByBit extends EventEmitter {
+export default class iByBit extends EventEmitter {
 
     constructor( opts={} ) {
 
@@ -48,41 +37,8 @@ class iByBit extends EventEmitter {
 
         this.subs = { };
 
-        this.ws = new WebSocketClient();
-
-        this.ws.onopen = () => { 
-           
-            this.connected = true;
-
-            for ( const i in this.subs ) {
-
-                const args = this.subs[ i ];
-                
-                for ( const a of args )
-                    this.listen( this.fmt( i, a ) );
-
-            }
-
-        };
-
-        this.ws.onclose = () => {
-
-            this.connected = false;
-
-        }
-
-        this.ws.onmessage = data => {
-
-            if ( CAPTURE != null ) {
-                // console.log( data )
-                messages.push( data );
-            }
-
-            this.delegate( data );
-
-        }
-
-
+        this.ws = null;
+        
     }
 
     trades( instrument ) {
@@ -120,11 +76,8 @@ class iByBit extends EventEmitter {
 
     listen( m ) {
 
-        if ( this.opts.simulate )
-            return;
-
         if ( !this.connected )
-            return;
+            return this.connect();
 
         this.ws.send( JSON.stringify( m ) );
 
@@ -132,13 +85,36 @@ class iByBit extends EventEmitter {
 
     connect( ) {
 
-        if ( this.opts.simulate )
+        if ( this.connected )
             return;
 
-        this.ws.open( URI );
+        this.ws = new ReconnectingWebSocket( URI );
+
+        this.ws.addEventListener( 'open', () => { 
+            
+            this.connected = true;
+
+            for ( const i in this.subs ) {
+
+                const args = this.subs[ i ];
+                
+                for ( const a of args )
+                    this.listen( this.fmt( i, a ) );
+
+            }
+
+        });
+
+        this.ws.addEventListener('close', (this.onclose).bind(this) );
+        this.ws.addEventListener('message', (this.delegate).bind( this ));
+
+        // this.ws.open( URI );
 
     }
 
+    onclose() {
+        this.connected = false;
+    }
 
     fmt( instrument, channel ) {
 
@@ -148,13 +124,9 @@ class iByBit extends EventEmitter {
         };
     }
 
-    delegate( data ) {
-       
-        if ( CAPTURE != null )
-            return;
+    delegate( message ) {
 
-        json = JSON.parse( data );
-
+        json = JSON.parse( message.data );
 
         if ( !json.topic )
             return;
@@ -167,11 +139,11 @@ class iByBit extends EventEmitter {
             case "orderBook_200": 
                 let res = this.library.handle( json, topic[2] );
                 if ( res) 
-                    this.fire('orderbook', res );
+                    this.emit(`orderbook:${res.instrument}`, res );
                 break;
                 
             default:
-                this.fire('trades', this.trade.handle( json.data ));
+                // this.emit('trades', this.trade.handle( json.data ));
                 break;
 
         }
@@ -180,4 +152,4 @@ class iByBit extends EventEmitter {
 
 }
 
-module.exports = iByBit;
+// module.exports = iByBit;

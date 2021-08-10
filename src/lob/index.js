@@ -3,22 +3,35 @@
 // const Bids = require('./bids');
 // const Asks = require('./asks');
 
-import Aggregate from '../util/aggregate';
-import Bids from './bids';
-import Asks from './asks';
+import Aggregate from '../util/aggregate.js';
+import Bids from './bids.js';
+import Asks from './asks.js';
 
 export default class Book {
 
     constructor( opts={} ) {
 
         // this.useref = opts.useref || false;
-        this.useref = true;
+        this.useref = false;
 
-        this.bids = new Bids( this.useref );
-        this.asks = new Asks( this.useref );
+        this.bids = new Bids( this.useref, true );
+        this.asks = new Asks( this.useref, true );
 
         this.agg = new Aggregate();
 
+    }
+
+    reset() {
+        this.bids.reset();
+        this.asks.reset();
+    }
+
+    deltabid( price, size ) {
+        this.bids.set( price, size, true );
+    }
+
+    deltaask( price, size ) {
+        this.asks.set( price, size, true );
     }
 
     bid( price, size ) {
@@ -35,10 +48,14 @@ export default class Book {
 
     }
 
-    snapshot( levels ) {
+    quote( ) {
+        return { bid: this.bids.best(), ask: this.asks.best() };
+    }
+
+    snapshot( levels, maxbid=null, maxask=null ) {
         return {
-            bid: this.bids.snapshot( levels ),
-            ask: this.asks.snapshot( levels )
+            bid: this.bids.snapshot( levels, maxbid ),
+            ask: this.asks.snapshot( levels, maxask )
         }
     }
 

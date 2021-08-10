@@ -1,8 +1,12 @@
 <template>
     <div>
-        <Title :text="`Aggregate ${id}`"/>
+        <Title :text="`Aggregate ${assetstitle}`"/>
         <div>
-            {{ symbols }}
+            <div v-for="(bid, index) in megabook" :key="index">
+                {{ bid }}
+                <!-- {{ bid[0] }} => {{ bid[1] }} -->
+            </div>
+    
         </div>
     </div>
 </template>
@@ -18,8 +22,10 @@ const Settings = {
 }
 
 
-import Title from './common/Title.vue';
-import SYM from '../exchange/sym';
+import Title    from './common/Title.vue';
+import Book     from '../lob';
+import util     from '../util/util';
+
 
 export default {    
 
@@ -35,11 +41,25 @@ export default {
 
             frequency: 500,
 
-            snapshot: null,
+            snapshots: {},
 
             timer: null,
 
-            assets: []
+            // orderbooks: {
+            //     /* 'bitmex:XBTUSD': { bid: [], ask: [] }   */
+            // },
+
+            assets: [],
+
+            // aggregate: 0.5,
+            levels: 20,
+
+            bid: [],
+            ask: [],
+
+
+            mega: null
+
         }
     },
 
@@ -58,16 +78,93 @@ export default {
         }
     },
 
+    computed: {
 
+        megabook () {
+
+            return this.mega ? this.mega.snapshot( this.levels ).bid : [];
+
+        },
+
+        tick() {
+            return 5;
+            return Math.max( ...this.assets.map( m => m.price.tick ) );
+        },
+
+        dp() {
+            return 0
+        },
+
+        assetstitle() {
+            return this.assets.map( m => m.symbol ).join(',');
+        }
+
+
+    },
 
     methods: {
 
         update( data ) {
-            
-            // console.log( data );
 
-            // this.snapshot = data.orderbook.snapshot( 3 );
-            // this.heartbeat( true );
+            // $print('update, tick', this.tick )
+            
+            const id = data.asset.identifier();
+            const atick = data.asset.price.tick;
+            const dp = data.asset.price.dp;
+
+            const levs = this.numlevels( atick );
+            
+            const quote = data.orderbook.quote();
+
+            const maxbid = quote.bid - ( levs * atick );
+            const maxask = quote.ask + ( levs * atick );
+
+            // const snapshot = data.orderbook.snapshot( levs, maxbid, maxask );
+
+            this.snapshots[ id ] = { native: atick, dp, snapshot: data.orderbook.snapshot( levs, maxbid, maxask ) };
+
+            this.merge();
+            
+            // this.orderbooks[ data.asset.identifier() ] = data.orderbook;
+            // Vue.set( this.orderbooks, data.asset.identifier(), data.orderbook );
+            // console.log( this.orderbooks )
+
+        },
+
+        merge() {
+
+            if ( !this.mega )
+                this.mega = new Book();
+            else
+                this.mega.reset();
+
+            for ( const id in this.snapshots ) {
+
+                const book = this.snapshots[ id ].snapshot;
+
+                // Bids
+                let t =0, bids = book.bid, asks = book.ask;
+                let mprice = 0;
+                let bid, ask;
+                const T = this.tick;
+                const DP = this.dp;
+
+                for ( t=0; t<bids.length; t++ ) {
+
+                    bid = bids[t];
+                    mprice = util.round_to_tick( bid[0], T,  DP );
+
+                    this.mega.deltabid( mprice, bid[1] );
+
+                }
+
+            }
+
+        },
+
+        numlevels( atick ) {
+
+            return this.tick / atick * this.levels;
 
         },
 
@@ -83,39 +180,33 @@ export default {
 
             if ( !Settings.ports.input.includes( contract.output ) ) 
                 return false;
+            
+            const asset = contract.asset;
 
-            $print('adding: ', contract.asset )
-
-            if ( this.symbols.length == 0 ) {
-                this.symbols.push( add );
+            if ( this.assets.length == 0 ) {
+                this.assets.push( asset );
                 return { success: true };
             }
 
-            for ( const S of this.symbols ) {
-
-                if ( this.duplicate( S, add ) ) 
+            for ( const A of this.assets ) {
+                if ( A.same( asset ) ) 
                     return { success: false, message: `Symbol already included in this aggregate book`};
 
-                if ( !this.compatible( S, add ) ) 
-                    return { success: false, message: `Symbol ${contract.data.symbol} doesn't match this orderbook`};
+                if ( !A.compatible( asset ) ) 
+                    return { success: false, message: `Symbol ${asset.symbol} doesn't match this orderbook`};
             }
 
-            this.symbols.push( add );
+            this.assets.push( asset );
 
-            return { success: true };
+            return { success: true }
 
-        },
-
-        duplicate( sym1, sym2 ) {
-            return sym1.symbol == sym2.symbol && sym1.exchange == sym2.exchange
-        },
-        compatible( sym1, sym2 ) {
-            return sym1.normalized == sym2.normalized && sym1.market == sym2.market;
-        },
+          },
 
         disconnected( contract ) {
 
-            this.symbols = this.symbols.filter( f => f.symbol != contract.data.symbol && f.exchange != contract.data.exchange );
+            this.assets = this.assets.filter( f => !f.same( contract.asset ) );
+
+            delete this.snapshots[ contract.asset.identifier() ];
 
         },
 
@@ -123,10 +214,7 @@ export default {
             return {
                 input: Settings.ports.input,
                 output: Settings.ports.output,
-
-                data: {
-                    multi: true
-                }
+                assets: this.assets,
             }
         },
 

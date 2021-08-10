@@ -1,8 +1,10 @@
 
 import bitmex from '../exchange/bitmex';
+import ibybit from '../exchange/bybit/inverse';
 
 const EXCHANGE = {
-    bitmex
+    bitmex,
+    ibybit
 };
 
 export default class Network {

@@ -1,7 +1,8 @@
 
-const Orderbook = require('./Orderbook');
+// const Orderbook = require('./Orderbook');
+import Orderbook from './Orderbook';
 
-class OrderbookManager {
+export default class OrderbookManager {
 
     constructor() { 
         
@@ -73,4 +74,4 @@ class OrderbookManager {
 
 
 
-module.exports = OrderbookManager;
+// module.exports = OrderbookManager;
