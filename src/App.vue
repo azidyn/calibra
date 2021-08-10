@@ -67,10 +67,12 @@ export default {
         this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ exchange: 'bitmex', symbol: 'ETHUSD' }, size: { width: 150, height: 300 }, listeners: []  });
 
         this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, listeners: []  });
+        this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, listeners: []  });
 
         const lob1 = this.comps[0];
         const lob2 = this.comps[1];
-        const imb = this.comps[2];
+        const imb1 = this.comps[2];
+        const imb2 = this.comps[3];
 
         this.$nextTick( () => {
 
@@ -124,8 +126,10 @@ export default {
                 }
 
                 jsPlumb.addEndpoint(lob1.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
-                jsPlumb.addEndpoint(lob2.id, endpointInput );
-                jsPlumb.addEndpoint(imb.id, endpointInput );
+                jsPlumb.addEndpoint(lob2.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
+
+                jsPlumb.addEndpoint(imb1.id, endpointInput );
+                jsPlumb.addEndpoint(imb2.id, endpointInput );
 
                 // // jsPlumb.addEndpoint(lob3.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
 

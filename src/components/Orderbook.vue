@@ -30,7 +30,11 @@ export default {
             // emitter: mitt(),
             counter: 0,
 
-            snapshot: null
+            frequency: 500,
+
+            snapshot: null,
+
+            timer: null
         }
     },
 
@@ -47,10 +51,7 @@ export default {
     methods: {
 
         update( data ) {
-
             this.snapshot = data.orderbook.snapshot( 3 );
-            this.notify();
-
         },
 
 
@@ -66,11 +67,22 @@ export default {
 
     mounted() {
 
+        if ( this.timer )
+            clearInterval( this.timer );
+
+        this.timer = setInterval( () => this.notify() , this.frequency)
 
         this.socket = $network.socket( this.exchange );
         this.socket.on(`orderbook:${this.symbol}`, this.update, this );
         this.socket.orderbook( this.symbol );        
 
+    },
+
+    beforeDestroy() {
+        if ( this.timer )
+            clearInterval( this.timer );
+
+        this.timer = null;
     },
 
 
