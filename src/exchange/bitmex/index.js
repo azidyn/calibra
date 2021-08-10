@@ -149,7 +149,7 @@ export default class bitmex extends EventEmitter {
             case "orderBookL2": 
 
                 let res = this.library.handle( json );
-                if ( res ) this.emit('orderbook', res );
+                if ( res ) this.emit(`orderbook:${res.instrument}`, res );
                 break;
 
             case "trade":

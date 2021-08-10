@@ -1,10 +1,17 @@
 <template>
     <div id="app">
 
-        <VueDragResize v-for="(w, index) in windows" :key="index" :w="w.width" :h="w.height" v-on:resizing="n => resize(n, w)" v-on:dragging="n => resize(n, w)" :id="w.id" dragHandle=".drag" style="background:pink; z-index: 1">
-            <div class="drag noselect" style="background: #aaa">{{ w.title }}</div>
-            <component :is="w.component" :source="w.data" @interact="w.interact" class="noselect" ></component>
-           
+        <VueDragResize v-for="(w, index) in comps" :key="index" :w="w.size.width" :h="w.size.height" v-on:resizing="n => resize(n, w)" v-on:dragging="n => resize(n, w)" :id="w.id" dragHandle=".drag" style="background:pink; z-index: 1">
+            <!-- <div class="drag noselect" style="background: #aaa">{{ 'orderbook'}}</div> -->
+            <component 
+                class="noselect"
+                :is="w.component"  
+                :config="w.config" 
+                :size="w.size" 
+                :id="w.id" 
+                :listeners="w.listeners"
+            >
+            </component>
         </VueDragResize>
 
     </div>
@@ -12,24 +19,31 @@
 
 <script>
 import VueDragResize from 'vue-drag-resize';
-import COrderbook from './components/COrderbook.vue';
-import Orderbook from './modules/Orderbook';
 
-const GenID = () => Math.floor( Math.random() *  Date.now() );
+import Orderbook from './components/Orderbook';
+import Imbalance from './components/Imbalance';
+
+const COMPONENT = {
+    Orderbook,
+    Imbalance
+};
+
+
+const GenID = () => Math.floor( (Math.random() * Date.now()) / 1000 );
 
 export default {
     name: 'app',
 
     components: {
         VueDragResize,
-        COrderbook
+        Orderbook,
+        Imbalance
     },
 
     data() {
         return {
             init: false,
-            windows: [],
-
+            comps: [],
             // jsp: null
         }
     },
@@ -38,9 +52,10 @@ export default {
 
         resize(newRect, win) {
 
-            win.resized( newRect );
+            win.size.width = newRect.width;
+            win.size.height = newRect.height;
 
-            for ( const i of this.windows )
+            for ( const i of this.comps )
                 jsPlumb.revalidate( i.id );
 
         }
@@ -48,17 +63,14 @@ export default {
 
     mounted() {
 
-        const lob = new Orderbook({ title: 'BitMEX', exchange: 'bitmex', symbol: 'XBTUSD' });
-        const lob2 = new Orderbook({ title: 'BitMEX', exchange: 'bitmex', symbol: 'ETHUSD' });
-        // const lob3 = new Orderbook('win3', this.jsp );
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ exchange: 'bitmex', symbol: 'XBTUSD' }, size: { width: 150, height: 300 }, listeners: [] });
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ exchange: 'bitmex', symbol: 'ETHUSD' }, size: { width: 150, height: 300 }, listeners: []  });
 
-        this.windows.push( lob )
-        this.windows.push( lob2 )
+        this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, listeners: []  });
 
-        return;
-        // this.windows.push( lob2 )
-        // this.windows.push( lob3 )
-
+        const lob1 = this.comps[0];
+        const lob2 = this.comps[1];
+        const imb = this.comps[2];
 
         this.$nextTick( () => {
 
@@ -80,24 +92,46 @@ export default {
                     isSource: false,
                     isTarget: true,
                     beforeDrop: params => {
-                        // console.log( params )
-                        const target = this.windows.find( f => f.id == params.targetId );
-                        const source = this.windows.find( f => f.id == params.sourceId );
-                        return target.connect( source );
+
+                        const tc = this.comps.find( f => f.id == params.targetId );
+                        const sc = this.comps.find( f => f.id == params.sourceId );
+
+                        const target = COMPONENT[ tc.component ];
+                        const source = COMPONENT[ sc.component ];
+
+                        const accept = target.accept( source );
+
+                        if ( accept )
+                            sc.listeners.push( params.targetId )
+
+                        return accept;
 
                     },
+
+                    beforeDetach: params => {
+
+                        // const tc = this.comps.find( f => f.id == params.targetId );
+                        const sc = this.comps.find( f => f.id == params.sourceId );
+
+                        // Remove this target from listeners
+                        sc.listeners = sc.listeners.filter( f => f != params.targetId );
+                        
+                    },
+
                     anchor: "AutoDefault",
                     maxConnections: 10,
                     paintStyle: { width: 16, height: 16, stroke: 'red', fill: 'red' }
                 }
 
-                jsPlumb.addEndpoint(lob.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
-                // jsPlumb.addEndpoint(lob2.id, endpointInput );
-                // jsPlumb.addEndpoint(lob3.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
+                jsPlumb.addEndpoint(lob1.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
+                jsPlumb.addEndpoint(lob2.id, endpointInput );
+                jsPlumb.addEndpoint(imb.id, endpointInput );
 
-                jsPlumb.bind("connection", (info, originalEvent) => {
-                    console.log(info, originalEvent)
-                });            
+                // // jsPlumb.addEndpoint(lob3.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
+
+                // jsPlumb.bind("connection", (info, originalEvent) => {
+                //     console.log(info, originalEvent)
+                // });            
 
 
             });
