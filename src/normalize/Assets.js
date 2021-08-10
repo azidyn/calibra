@@ -6,7 +6,7 @@ class ExchangeAsset {
             this[ k ] = opts[ k ];
 
     }
-    
+
     identifier() {
         return `${this.exchange}:${this.symbol}`;
     }
@@ -69,3 +69,5 @@ export default [
         value: ( size, price ) => size
     }),     
 ];
+
+
