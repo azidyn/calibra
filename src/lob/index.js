@@ -14,8 +14,8 @@ export default class Book {
         // this.useref = opts.useref || false;
         this.useref = false;
 
-        this.bids = new Bids( this.useref, true );
-        this.asks = new Asks( this.useref, true );
+        this.bids = new Bids( this.useref, opts.shadow || false );
+        this.asks = new Asks( this.useref, opts.shadow || false );
 
         this.agg = new Aggregate();
 

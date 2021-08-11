@@ -1,11 +1,15 @@
 <template>
     <div>
         <Title :text="`${exchange}:${symbol}`"/>
-        <div v-if="snapshot">
+        <div v-if="snapshot || true">
+            
+            <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas>
+
+            
             <!-- {{ snapshot }} -->
-            <div v-for="(bid, index) in snapshot.bid" :key="index">
+            <!-- <div v-for="(bid, index) in snapshot.bid" :key="index">
                 {{ bid }}
-            </div>
+            </div> -->
         </div>
     </div>
 </template>
@@ -41,7 +45,9 @@ export default {
             orderbook: null,
             snapshot: null,
 
-            timer: null
+            timer: null,
+
+            ctx: null
         }
     },
 
@@ -63,10 +69,20 @@ export default {
                 }
             }
 
+        },
+
+        size: {
+            deep: true,
+            handler(){
+                this.$nextTick( () => this.render() );
+            }
         }
     },
 
     computed: {
+        canvsize() {
+            return { width: this.size.width - 10, height: this.size.height - 30 }
+        },
         asset() {
             return this.config.asset;
         },
@@ -87,8 +103,53 @@ export default {
             this.snapshot = data.orderbook.snapshot( 10 );
             this.heartbeat( true );
 
+            this.render();
+
         },
 
+        render() {
+
+            if ( !this.snapshot )
+                return;
+            
+            // this.ctx = this.$refs['display'].getContext("2d");
+
+            const w = this.canvsize.width;
+            const h = this.canvsize.height;
+
+            this.ctx.clearRect(0, 0, w,h );
+
+            // console.log(`set w=${w} h=${h} | canv w = ${this.ctx.canvas.width} h = ${this.ctx.canvas.height}`);
+
+            // this.ctx.fillRect( 0,0,100,100 )
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeStyle = "black"
+            // this.ctx.strokeRect( 1,1,100,100 );
+
+            const height = 25;
+            // const max = h / height;
+
+            for ( let y=1; y< h; y += height ) {
+                this.ctx.moveTo( 1, y + 0.5 );
+                this.ctx.lineTo( w-1, y + 0.5 )
+                this.ctx.stroke();
+            }
+
+            this.ctx.font = "12px Georgia, monospace";
+            
+            let y = 1;
+            for ( const b of this.snapshot.bid ) {
+                this.ctx.fillText(`${b[0]}`,10, y + 0.5);
+                y += 25;
+                if ( y >= h ) break;
+
+            }
+
+            
+            // this.ctx.rect( 1, 1, 100, 100 )
+            // this.ctx.stroke();
+
+        },
 
         notify() {
 
@@ -145,9 +206,17 @@ export default {
     },
 
     mounted() {
-        // this.socket = $network.socket( this.exchange );
-        // this.socket.on(`orderbook:${this.symbol}`, this.update, this );
-        // this.socket.orderbook( this.symbol );        
+
+        this.$nextTick( () => {
+            
+            this.ctx = this.$refs['display'].getContext("2d");
+            this.render();
+            
+        });
+
+        this.socket = $network.socket( this.exchange );
+        this.socket.on(`orderbook:${this.symbol}`, this.update, this );
+        this.socket.orderbook( this.symbol );        
     },
 
     beforeDestroy() {

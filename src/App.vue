@@ -1,7 +1,7 @@
 <template>
     <div id="app">
 
-        <VueDragResize v-for="(w, index) in comps" :key="index" :w="w.size.width" :h="w.size.height" v-on:resizing="n => resize(n, w)" v-on:dragging="n => resize(n, w)" :id="w.id" dragHandle=".drag" style="background:#ccc">
+        <VueDragResize v-for="(w, index) in comps" :key="index" :w="w.size.width" :h="w.size.height" v-on:resizing="n => resize(n, w)" v-on:dragging="n => resize(n, w)" :id="w.id" dragHandle=".drag" style="background:#ccc; z-index: 1">
             <!-- <div class="drag noselect" style="background: #aaa">{{ 'orderbook'}}</div> -->
             <component 
                 class="noselect"
@@ -96,10 +96,24 @@ export default {
                     EndpointHoverStyle: { fill: "orange" },
                     HoverPaintStyle: { stroke: "orange" },
                     EndpointStyle: { width: 16, height: 16, stroke: '#666', fill: '#888' },
-                    Connector:[ "Flowchart"],
+                    Connector:[ "Bezier", { curviness: 65 }],
+                    ConnectorStyle: { stroke: '#00F', strokeWidth: 6 },
+
                     Endpoint: "Rectangle",
+                    // Endpoint: ["Dot", {radius: 10}],
+
                     Anchors: "AutoDefault",
-                    Container: "app"
+                    Container: "app",
+
+                    ConnectionOverlays: [
+                        [ "Arrow", {
+                            location: 1,
+                            id: "arrow",
+                            length: 14,
+                            foldback: 0.8
+                        } ],
+                        // [ "Label", { label: "FOO", id: "label", cssClass: "aLabel" }]
+                    ]                    
                 });
 
                 const endpointInput = {
@@ -158,12 +172,19 @@ export default {
                     paintStyle: { width: 16, height: 16, stroke: 'red', fill: 'red' }
                 }
 
-                jsPlumb.addEndpoint(lob1.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
-                jsPlumb.addEndpoint(lob2.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
+                const connectorStyle = {
+                    stroke:'#666',
+                    strokeWidth: 5
+                };
+
+                const connector = [ "Bezier", { curviness: 65 }];
+
+                jsPlumb.addEndpoint(lob1.id, { isSource: true, isTarget: false, anchor: "AutoDefault", maxConnections: 10, connector, connectorStyle });
+                jsPlumb.addEndpoint(lob2.id, { isSource: true, isTarget: false, anchor: "AutoDefault", connector, connectorStyle });
 
                 // const comp = Component[ imb1.component ];
 
-                let endpointconfig = Object.assign({}, endpointInput, { maxConnections: 5 })
+                let endpointconfig = Object.assign({}, endpointInput, { maxConnections: 5, connector, connectorStyle })
 
                 $print( endpointconfig );
 
@@ -177,6 +198,10 @@ export default {
                 // jsPlumb.bind("connection", (info, originalEvent) => {
                 //     console.log(info, originalEvent)
                 // });            
+
+                jsPlumb.bind("click", c => {
+                    console.log( c )
+                })
 
 
             });
@@ -237,4 +262,14 @@ body, html {
     border: 0;
     padding: 0;
 }
+
+.jtk-endpoint {
+    z-index: 1;
+}
+
+.jtk-connector {
+    z-index: 0;
+}
+
+
 </style>

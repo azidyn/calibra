@@ -2,9 +2,8 @@
     <div>
         <Title :text="`Aggregate ${assetstitle}`"/>
         <div>
-            <div v-for="(bid, index) in megabook" :key="index">
+            <div v-for="(bid, index) in megabook" :key="index" :style="stylebid( bid[0] )">
                 {{ bid }}
-                <!-- {{ bid[0] }} => {{ bid[1] }} -->
             </div>
     
         </div>
@@ -37,26 +36,21 @@ export default {
         return {
             socket: null,
 
-            counter: 0,
-
             frequency: 500,
 
             snapshots: {},
 
             timer: null,
 
-            // orderbooks: {
-            //     /* 'bitmex:XBTUSD': { bid: [], ask: [] }   */
-            // },
-
+        
             assets: [],
-
-            // aggregate: 0.5,
+        
             levels: 20,
 
-            bid: [],
-            ask: [],
-
+            quotes: {
+                bid: [],
+                ask: []
+            },
 
             mega: null
 
@@ -107,7 +101,10 @@ export default {
         update( data ) {
 
             // $print('update, tick', this.tick )
-            
+
+            if ( !data.orderbook )
+                return;
+
             const id = data.asset.identifier();
             const atick = data.asset.price.tick;
             const dp = data.asset.price.dp;
@@ -121,7 +118,7 @@ export default {
 
             // const snapshot = data.orderbook.snapshot( levs, maxbid, maxask );
 
-            this.snapshots[ id ] = { native: atick, dp, snapshot: data.orderbook.snapshot( levs, maxbid, maxask ) };
+            this.snapshots[ id ] = { asset: data.asset, snapshot: data.orderbook.snapshot( levs, maxbid, maxask ) };
 
             this.merge();
             
@@ -134,13 +131,16 @@ export default {
         merge() {
 
             if ( !this.mega )
-                this.mega = new Book();
+                this.mega = new Book({ shadow: false });
             else
                 this.mega.reset();
+
+            this.quotes.bid = [];
 
             for ( const id in this.snapshots ) {
 
                 const book = this.snapshots[ id ].snapshot;
+                const asset = this.snapshots[ id ].asset;
 
                 // Bids
                 let t =0, bids = book.bid, asks = book.ask;
@@ -148,6 +148,8 @@ export default {
                 let bid, ask;
                 const T = this.tick;
                 const DP = this.dp;
+
+                this.quotes.bid.push({ asset, price: util.round_to_tick( bids[0][0], T,  DP )})
 
                 for ( t=0; t<bids.length; t++ ) {
 
@@ -159,6 +161,54 @@ export default {
                 }
 
             }
+
+            this.quotes.bid.sort( (a,b) => b.price - a.price );
+
+        },
+
+        stylebid( price ) {
+
+            const b = this.quotes.bid;
+
+            // $print(b)
+
+            
+            const behind = b.filter( f => f.price >= price );
+
+            if ( behind.length > 1 )
+                return 'color: black';
+
+            const asset = behind[ 0 ].asset;
+            
+            // const which = b.findIndex( f => price <= f.price );
+
+            // console.log( price, b.map( m => m.price ), which )
+
+            // if ( which == -1 )
+            //     return '';
+
+
+            // console.log( asset )
+
+            if ( asset.exchange == 'ibybit' )
+                return 'color: #b1700f';
+            
+            if ( asset.exchange == 'bitmex' )
+                return 'color: blue';
+
+            // for ( let t=0; t<=b.length; t++ ) {
+                
+            //     const q1 = b[t].price;
+            //     const q2 = b[t+1].price;
+
+            //     if ( price <= q1 && price > q2 )
+            //         return b[t].asset.exchange == 'ibybit' ? 'color: orange' : 'color: black'
+            // }
+
+            // // console.log( this.quotes.bid, price )
+            // return 'color: red'
+
+            return 'color: black'
 
         },
 
@@ -282,5 +332,8 @@ export default {
 </script>
 
 <style>
+.asd {
+    color: #b1700f
+}
 
 </style>

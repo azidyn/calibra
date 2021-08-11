@@ -11,7 +11,7 @@ export default class Orderbook {
         // enforce a client-side structure down the wire.
 
         this.id = new Map();
-        this.lob = new Book();
+        this.lob = new Book({ shadow: true });
 
     }
 

@@ -31,7 +31,7 @@ export default class Orderbook {
         // so we must keep track of it with a Map()
 
         this.id = new Map();
-        this.lob = new Book();
+        this.lob = new Book({ shadow: true });
 
 
     }
