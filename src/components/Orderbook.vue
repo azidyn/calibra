@@ -1,15 +1,9 @@
 <template>
     <div>
         <Title :text="`${exchange}:${symbol}`"/>
-        <div v-if="snapshot || true">
-            
-            <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas>
-
-            
-            <!-- {{ snapshot }} -->
-            <!-- <div v-for="(bid, index) in snapshot.bid" :key="index">
-                {{ bid }}
-            </div> -->
+        <div v-if="snapshot">
+            {{ snapshot.bid }}
+            <!-- <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas> -->
         </div>
     </div>
 </template>
@@ -37,21 +31,19 @@ export default {
     data() {
         return {
             socket: null,
-            // emitter: mitt(),
-            counter: 0,
 
-            frequency: 500,
+            frequency: 500,     // Snapshot output frequency
+            timer: null,         
 
-            orderbook: null,
-            snapshot: null,
-
-            timer: null,
+            orderbook: null,    // Current full reconstructed book
+            snapshot: null,     // Last snapshot of above
 
             ctx: null
         }
     },
 
     watch: {
+
         outputs: {
 
             immediate: true,
@@ -74,7 +66,7 @@ export default {
         size: {
             deep: true,
             handler(){
-                this.$nextTick( () => this.render() );
+                // this.$nextTick( () => this.render() );
             }
         }
     },
@@ -103,52 +95,64 @@ export default {
             this.snapshot = data.orderbook.snapshot( 10 );
             this.heartbeat( true );
 
-            this.render();
-
         },
 
         render() {
 
-            if ( !this.snapshot )
+            return;
+           
+            if ( !this.snapshot ) {
+                requestAnimationFrame( this.render );
                 return;
-            
-            // this.ctx = this.$refs['display'].getContext("2d");
+            }
 
+            const n = Date.now();
+            
             const w = this.canvsize.width;
             const h = this.canvsize.height;
 
             this.ctx.clearRect(0, 0, w,h );
 
-            // console.log(`set w=${w} h=${h} | canv w = ${this.ctx.canvas.width} h = ${this.ctx.canvas.height}`);
-
-            // this.ctx.fillRect( 0,0,100,100 )
             this.ctx.lineWidth = 1;
             this.ctx.strokeStyle = "black"
-            // this.ctx.strokeRect( 1,1,100,100 );
+
 
             const height = 25;
-            // const max = h / height;
 
-            for ( let y=1; y< h; y += height ) {
-                this.ctx.moveTo( 1, y + 0.5 );
-                this.ctx.lineTo( w-1, y + 0.5 )
-                this.ctx.stroke();
-            }
-
-            this.ctx.font = "12px Georgia, monospace";
-            
-            let y = 1;
-            for ( const b of this.snapshot.bid ) {
-                this.ctx.fillText(`${b[0]}`,10, y + 0.5);
-                y += 25;
-                if ( y >= h ) break;
-
-            }
-
-            
-            // this.ctx.rect( 1, 1, 100, 100 )
+            // this.ctx.moveTo( 1, 1 );
+            // this.ctx.lineTo( w-1, h-1 )
             // this.ctx.stroke();
+            const max = Math.max(50, Math.min( 400, h ) );
 
+            for ( let t=0; t<10; t++ ) {
+                const y = 1 + ( t * 25 );
+                
+                this.ctx.moveTo( 1, y );
+                this.ctx.lineTo( 100-1, y )
+                this.ctx.stroke();
+
+            }
+
+
+            // for ( let y=1; y< max; y += height ) {
+            //     this.ctx.moveTo( 1, y );
+            //     this.ctx.lineTo( w-1, y )
+            //     this.ctx.stroke();
+            // }
+
+            
+            // let y = 1;
+            // for ( const b of this.snapshot.bid ) {
+            //     this.ctx.fillText(`${b[0]}`,10, y + 0.5);
+            //     y += height;
+            //     if ( y >= h ) break;
+
+            // }
+
+//            requestAnimationFrame( this.render );
+
+            // $print(`time `, Date.now() - n )
+            
         },
 
         notify() {
@@ -156,7 +160,7 @@ export default {
             for ( const L of this.outputs )  {
 
                 $mitt.emit(`${L}:snapshot`, { asset: this.asset, snapshot: this.snapshot } );
-                $mitt.emit(`${L}:orderbook`, { asset: this.asset, orderbook: this.orderbook  } );
+                $mitt.emit(`${L}:orderbook`, { asset: this.asset, orderbook: this.orderbook } );
 
             }
 
@@ -209,10 +213,12 @@ export default {
 
         this.$nextTick( () => {
             
-            this.ctx = this.$refs['display'].getContext("2d");
-            this.render();
+            // this.ctx = this.$refs['display'].getContext("2d");
+            // this.ctx.font = "10px, monospace";
             
         });
+
+        // requestAnimationFrame( this.render );
 
         this.socket = $network.socket( this.exchange );
         this.socket.on(`orderbook:${this.symbol}`, this.update, this );
