@@ -2,7 +2,7 @@
   
     <div>
         <Title :text="`Imbalance: ${inputs}`"></Title>
-        <div v-if="inputs > 0">
+        <div v-if="inputs.length > 0">
             {{ balance }}
         </div>
         <div v-else>
@@ -33,7 +33,7 @@ export default {
 
     data() {
         return { 
-            inputs: 0,
+            inputs: [],
             data: null,
             total: {
                 bid: 0,
@@ -61,30 +61,28 @@ export default {
             if ( !this.data )
                 return;
             
-            console.log( data )
-
             if ( this.data.bid ) this.total.bid = this.data.bid.reduce( (a,c ) => a + c[1], 0 );
             if ( this.data.ask ) this.total.ask = this.data.ask.reduce( (a,c ) => a + c[1], 0 );
 
         },
 
 
-        connect( contract ) {
+        connect( source_id, contract ) {
 
-            if ( this.inputs > 0 )
+            if ( this.inputs.length > 0 )
                 return { success: false, message: 'Only 1 input allowed' }
             
             const success = Settings.ports.input.includes( contract.output );
 
             if ( success )
-                this.inputs++;
+                this.inputs.push( source_id )
 
             return { success: true }
         },
 
-        disconnect( contract ) {
+        disconnect( source_id, contract ) {
 
-            this.inputs = Math.max( this.inputs-1, 0 );
+            this.inputs = this.inputs.filter( f => f != source_id );
 
         },
 

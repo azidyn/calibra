@@ -80,6 +80,15 @@ export default {
 
         this.comps.push({ id: `ab_${GenID()}`, component: 'Aggregatebook', config:{ }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
 
+        setTimeout( () => {
+
+            const obs = this.comps.filter( f => f.component == 'Orderbook' ).map( m => m.config.asset || {} );
+
+            console.log( obs );
+
+
+        }, 5000 );
+
         const lob1 = this.comps[0];
         const lob2 = this.comps[1];
         const imb1 = this.comps[2];
@@ -87,9 +96,15 @@ export default {
 
         const agg1 = this.comps[3];
 
+
+
         this.$nextTick( () => {
 
             jsPlumb.ready(() => {
+
+                jsPlumb.bind('beforeStartDetach', function(p) {
+                    $print('beforestartdet', p )
+                });
 
                 jsPlumb.importDefaults({
                     DragOptions: { cursor: 'hand', zIndex: 2000 },
@@ -133,7 +148,7 @@ export default {
                             return false
                         }
                         
-                        const connect = target.connect( source.contract() );
+                        const connect = target.connect( params.sourceId, source.contract() );
 
                         if ( connect.success  ) {
 
@@ -149,6 +164,11 @@ export default {
 
                     },
 
+                    beforeStartDetach: params => {
+
+                        $print('start detatch: ', params )
+                    },
+
                     beforeDetach: params => {
 
                         const tc = this.comps.find( f => f.id == params.targetId );
@@ -157,12 +177,11 @@ export default {
                         const target = GetComp( params.targetId, this.$refs );
                         const source = GetComp( params.sourceId, this.$refs );
 
-                        target.disconnect( source.contract() );
+                        target.disconnect( params.sourceId, source.contract() );
 
                         // Remove this target from listeners
                         sc.outputs = sc.outputs.filter( f => f != params.targetId );
-                        tc.inputs--;
-                        
+                       
                     },
 
                     anchor: "AutoDefault",

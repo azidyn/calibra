@@ -229,6 +229,8 @@ export default {
 
         this.heartbeat( false );
 
+        console.log(`Destroying ${this.exchange}:${this.symbol} orderbook`)
+
     },
 
 
