@@ -27,12 +27,13 @@ const Settings = {
 
 export default {
 
-    props: ['config', 'size', 'id', 'outputs', 'inputs'],
+    props: ['config', 'size', 'id', 'outputs' ],
 
     components: { Title },
 
     data() {
         return { 
+            inputs: 0,
             data: null,
             total: {
                 bid: 0,
@@ -59,6 +60,8 @@ export default {
 
             if ( !this.data )
                 return;
+            
+            console.log( data )
 
             if ( this.data.bid ) this.total.bid = this.data.bid.reduce( (a,c ) => a + c[1], 0 );
             if ( this.data.ask ) this.total.ask = this.data.ask.reduce( (a,c ) => a + c[1], 0 );
@@ -66,11 +69,23 @@ export default {
         },
 
 
-        accept( contract ) {
-            return { success: Settings.ports.input.includes( contract.output ) };
+        connect( contract ) {
+
+            if ( this.inputs > 0 )
+                return { success: false, message: 'Only 1 input allowed' }
+            
+            const success = Settings.ports.input.includes( contract.output );
+
+            if ( success )
+                this.inputs++;
+
+            return { success: true }
         },
 
-        disconnected( contract ) {
+        disconnect( contract ) {
+
+            this.inputs = Math.max( this.inputs-1, 0 );
+
         },
 
         contract() {

@@ -133,23 +133,19 @@ export default {
                             return false
                         }
                         
+                        const connect = target.connect( source.contract() );
 
-                        const verify = target.accept( source.contract() );
-
-                        if ( verify.success ) {
+                        if ( connect.success  ) {
 
                             sc.outputs.push( params.targetId )
-                            tc.inputs++;
                             return true;
 
                         } else { 
 
-                            alert( verify.message );
+                            alert( connect.message );
                             return false;
 
                         }
-
-
 
                     },
 
@@ -161,7 +157,7 @@ export default {
                         const target = GetComp( params.targetId, this.$refs );
                         const source = GetComp( params.sourceId, this.$refs );
 
-                        target.disconnected( source.contract() );
+                        target.disconnect( source.contract() );
 
                         // Remove this target from listeners
                         sc.outputs = sc.outputs.filter( f => f != params.targetId );
