@@ -2,7 +2,7 @@
     <div>
         <Title :text="`${exchange}:${symbol}`"/>
         <div v-if="snapshot">
-            <!-- {{ snapshot.bid }} -->
+            {{ snapshot.bid }}
             <!-- <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas> -->
         </div>
     </div>
@@ -220,9 +220,9 @@ export default {
 
         // requestAnimationFrame( this.render );
 
-        // this.socket = $network.socket( this.exchange );
-        // this.socket.on(`orderbook:${this.symbol}`, this.update, this );
-        // this.socket.orderbook( this.symbol );        
+        this.socket = $network.socket( this.exchange );
+        this.socket.on(`orderbook:${this.symbol}`, this.update, this );
+        this.socket.orderbook( this.symbol );        
     },
 
     beforeDestroy() {

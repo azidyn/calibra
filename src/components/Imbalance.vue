@@ -2,8 +2,7 @@
   
     <div>
         <Title :text="`Imbalance: ${inputs}`"></Title>
-        {{ assets.map( m => m.symbol) }}
-        <div v-if="inputs.length > 0">
+        <div v-if="assets.length > 0">
             {{ balance }}
         </div>
         <div v-else>
