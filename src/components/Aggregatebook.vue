@@ -2,6 +2,7 @@
     <div>
         <Title :text="`Aggregate ${assetstitle}`"/>
         <div>
+            {{ assets }}
             <div v-for="(bid, index) in megabook" :key="index" :style="stylebid( bid[0] )">
                 {{ bid }}
             </div>
@@ -226,21 +227,16 @@ export default {
 
         },
 
-        verify( id, contract ) {
-            return { success: true }
-        },
-
-        accept( contract ) {
+        verify( contract ) {
 
             if ( !Settings.ports.input.includes( contract.output ) ) 
                 return false;
             
             const asset = contract.asset;
 
-            if ( this.assets.length == 0 ) {
-                this.assets.push( asset );
+            // This is a blank, fresh orderbook always return true
+            if ( this.assets.length == 0 )
                 return { success: true };
-            }
 
             for ( const A of this.assets ) {
                 if ( A.same( asset ) ) 
@@ -250,20 +246,20 @@ export default {
                     return { success: false, message: `Symbol ${asset.symbol} doesn't match this orderbook`};
             }
 
-            this.assets.push( asset );
 
             return { success: true }
 
           },
 
 
-        connect() {
-            return { success: true }
+        connect( source_id, contract ) {
+           
+            const asset = contract.asset;
+            this.assets.push( asset );
+
         },
 
-        disconnect( contract ) {
-
-            return;
+        disconnect( source_id, contract ) {
 
             this.assets = this.assets.filter( f => !f.same( contract.asset ) );
 

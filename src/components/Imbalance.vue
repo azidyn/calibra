@@ -2,6 +2,7 @@
   
     <div>
         <Title :text="`Imbalance: ${inputs}`"></Title>
+        {{ assets.map( m => m.symbol) }}
         <div v-if="inputs.length > 0">
             {{ balance }}
         </div>
@@ -34,6 +35,7 @@ export default {
     data() {
         return { 
             inputs: [],
+            assets: [],
             data: null,
             total: {
                 bid: 0,
@@ -67,25 +69,39 @@ export default {
         },
 
         verify( contract ) {
-            return Settings.ports.input.includes( contract.output );
+
+            if ( !Settings.ports.input.includes( contract.output ) ) 
+                return false;
+            
+            const asset = contract.asset;
+
+            // This is a blank, fresh orderbook always return true
+            if ( this.assets.length == 0 )
+                return { success: true };
+
+            for ( const A of this.assets ) {
+                if ( A.same( asset ) ) 
+                    return { success: false, warning: `Symbol already included in this aggregate book`};
+
+                if ( !A.compatible( asset ) ) 
+                    return { success: false, error: `Symbol ${asset.symbol} doesn't match this orderbook`};
+            }
+
+
+            return { success: true }            
         },
 
         connect( source_id, contract ) {
 
-            if ( this.inputs.length > 0 )
-                return { success: false, message: 'Only 1 input allowed' }
-            
-            const success = Settings.ports.input.includes( contract.output );
+            const asset = contract.asset;
+            this.assets.push( asset );
 
-            if ( success )
-                this.inputs.push( source_id )
-
-            return { success: true }
         },
 
         disconnect( source_id, contract ) {
 
-            this.inputs = this.inputs.filter( f => f != source_id );
+            this.assets = this.assets.filter( f => !f.same( contract.asset ) );
+            // this.inputs = this.inputs.filter( f => f != source_id );
 
         },
 

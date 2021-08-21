@@ -225,8 +225,6 @@ export default {
                     isTarget: true,
                     beforeDrop: params => {
 
-                        console.log('before drop?');
-
                         const tc = this.comps.find( f => f.id == params.targetId );
                         const sc = this.comps.find( f => f.id == params.sourceId );
 
@@ -238,22 +236,19 @@ export default {
                             return false
                         }
 
-                        return target.verify( source.contract() );
-                        
-                        // const connect = target.connect( params.sourceId, source.contract() );
+                        const verify = target.verify( source.contract() );
 
-                        // if ( connect.success  ) {
+                        if ( !verify.success ) { 
 
-                        //     sc.outputs.push( params.targetId )
-                        //     return true;
+                            if ( verify.error )
+                                alert( verify.error );
 
-                        // } else { 
+                            if ( verify.warning )
+                                $print( verify.warning );
+                        }
 
-                        //     alert( connect.message );
-                        //     return false;
-
-                        // }
-
+                        return verify.success;
+      
                     },
 
                     // beforeStartDetach: params => {
@@ -304,7 +299,7 @@ export default {
 
                 // const comp = Component[ imb1.component ];
 
-                let endpointconfig = Object.assign({}, endpointInput, { maxConnections: 1, connector, connectorStyle })
+                let endpointconfig = Object.assign({}, endpointInput, { maxConnections: 5, connector, connectorStyle })
 
                 $print( endpointconfig );
 
@@ -319,7 +314,7 @@ export default {
                 //     console.log(info, originalEvent)
                 // });            
 
-                jsPlumb.bind("click", c => {
+                jsPlumb.bind("dblclick", c => {
                     console.log( c )
                 })
 
