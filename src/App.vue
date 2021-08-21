@@ -102,9 +102,90 @@ export default {
 
             jsPlumb.ready(() => {
 
-                jsPlumb.bind('beforeStartDetach', function(p) {
-                    $print('beforestartdet', p )
-                });
+                jsPlumb.bind("connection", (params, originalEvent) => {
+                    
+                    const tc = this.comps.find( f => f.id == params.targetId );
+                    const sc = this.comps.find( f => f.id == params.sourceId );
+
+                    const target = GetComp( params.targetId, this.$refs );
+                    const source = GetComp( params.sourceId, this.$refs );
+
+                    if ( !target || !source )  {
+                        console.error(`Error finding component: `, target, source );
+                        return false
+                    }
+
+                    sc.outputs.push( params.targetId );
+
+                    return target.connect( params.sourceId, source.contract() );
+                    
+
+                });                
+
+                jsPlumb.bind("connectionDetached", (params, originalEvent) => {
+
+                    const tc = this.comps.find( f => f.id == params.targetId );
+                    const sc = this.comps.find( f => f.id == params.sourceId );
+
+                    const target = GetComp( params.targetId, this.$refs );
+                    const source = GetComp( params.sourceId, this.$refs );
+
+                    target.disconnect( params.sourceId, source.contract() );
+
+                    // Remove this target from listeners
+                    sc.outputs = sc.outputs.filter( f => f != params.targetId );
+
+                });                
+
+                jsPlumb.bind("connectionMoved", (params, originalEvent) => {
+
+                    // Connection dragged back onto itself. Ignore.
+                    if ( params.originalSourceId == params.newSourceId && params.originalTargetId == params.newTargetId )
+                        return;
+
+                    $print('MOVED => ', params );
+
+                    // Source changed, target remains the same
+                    if ( params.originalSourceId != params.newSourceId ) {
+
+                        $print("Connection source changed - not handled")
+                        return;
+                    }
+
+                    // Target changed, source is same
+                    if ( params.originalTargetId != params.newTargetId ) {
+
+                        const sourceId = params.newSourceId;
+
+                        // const nt = this.comps.find( f => f.id == params.newTargetId );
+                        // const ot = this.comps.find( f => f.id == params.originalTargetId );
+                        const sc = this.comps.find( f => f.id == sourceId );
+                        const otarget = GetComp( params.originalTargetId, this.$refs );
+                        const ntarget = GetComp( params.newTargetId, this.$refs );
+                        const source = GetComp( sourceId, this.$refs );
+
+                        // Disconnect the original target, remove from source listeners
+                        otarget.disconnect( sourceId, source.contract() );
+                        sc.outputs = sc.outputs.filter( f => f != params.originalTargetId );
+
+                        // Connect the new target
+                        ntarget.connect( sourceId, source.contract() );
+                        sc.outputs.push( params.targetId );
+
+                        return;
+                    }
+
+
+
+
+
+                });                
+
+                // jsPlumb.bind('beforeStartDetach', function(p) {
+                //     $print('beforestartdet', p )
+                // });
+
+                // jsPlumb.bind('connectionMoved', p => $print('connectionMoved', p) );
 
                 jsPlumb.importDefaults({
                     DragOptions: { cursor: 'hand', zIndex: 2000 },
@@ -132,10 +213,19 @@ export default {
                     ]                    
                 });
 
+                const connectorStyle = {
+                    stroke:'#666',
+                    strokeWidth: 5
+                };
+
+                const connector = [ "Bezier", { curviness: 65 }];
+
                 const endpointInput = {
                     isSource: false,
                     isTarget: true,
                     beforeDrop: params => {
+
+                        console.log('before drop?');
 
                         const tc = this.comps.find( f => f.id == params.targetId );
                         const sc = this.comps.find( f => f.id == params.sourceId );
@@ -147,60 +237,74 @@ export default {
                             console.error(`Error finding component: `, target, source );
                             return false
                         }
+
+                        return target.verify( source.contract() );
                         
-                        const connect = target.connect( params.sourceId, source.contract() );
+                        // const connect = target.connect( params.sourceId, source.contract() );
 
-                        if ( connect.success  ) {
+                        // if ( connect.success  ) {
 
-                            sc.outputs.push( params.targetId )
-                            return true;
+                        //     sc.outputs.push( params.targetId )
+                        //     return true;
 
-                        } else { 
+                        // } else { 
 
-                            alert( connect.message );
-                            return false;
+                        //     alert( connect.message );
+                        //     return false;
 
-                        }
+                        // }
 
                     },
 
-                    beforeStartDetach: params => {
+                    // beforeStartDetach: params => {
 
-                        $print('start detatch: ', params )
-                    },
+                    //     $print('start detatch: ', params );
 
-                    beforeDetach: params => {
+                    //     return true;
+                        
+                    // },
 
-                        const tc = this.comps.find( f => f.id == params.targetId );
-                        const sc = this.comps.find( f => f.id == params.sourceId );
+                    // beforeDetach: params => {
 
-                        const target = GetComp( params.targetId, this.$refs );
-                        const source = GetComp( params.sourceId, this.$refs );
+                    //     const tc = this.comps.find( f => f.id == params.targetId );
+                    //     const sc = this.comps.find( f => f.id == params.sourceId );
 
-                        target.disconnect( params.sourceId, source.contract() );
+                    //     const target = GetComp( params.targetId, this.$refs );
+                    //     const source = GetComp( params.sourceId, this.$refs );
 
-                        // Remove this target from listeners
-                        sc.outputs = sc.outputs.filter( f => f != params.targetId );
+                    //     target.disconnect( params.sourceId, source.contract() );
+
+                    //     // Remove this target from listeners
+                    //     sc.outputs = sc.outputs.filter( f => f != params.targetId );
                        
-                    },
+                    // },
 
                     anchor: "AutoDefault",
                     paintStyle: { width: 16, height: 16, stroke: 'red', fill: 'red' }
                 }
 
-                const connectorStyle = {
-                    stroke:'#666',
-                    strokeWidth: 5
+
+
+                const endpointOutput = { 
+                    isSource: true, 
+                    isTarget: false, 
+                    anchor: "AutoDefault", 
+                    maxConnections: 10, 
+                    connector, 
+                    connectorStyle,
+
+                    // beforeStartDetach: () => console.log('output before start detatch'),
+                    // beforeDetach: () => console.log('output before detatch'),
+                    // beforeDrop: () => console.log('output before drop'),
                 };
 
-                const connector = [ "Bezier", { curviness: 65 }];
 
-                jsPlumb.addEndpoint(lob1.id, { isSource: true, isTarget: false, anchor: "AutoDefault", maxConnections: 10, connector, connectorStyle });
-                jsPlumb.addEndpoint(lob2.id, { isSource: true, isTarget: false, anchor: "AutoDefault", connector, connectorStyle });
+                jsPlumb.addEndpoint(lob1.id, endpointOutput );
+                jsPlumb.addEndpoint(lob2.id, endpointOutput );
 
                 // const comp = Component[ imb1.component ];
 
-                let endpointconfig = Object.assign({}, endpointInput, { maxConnections: 5, connector, connectorStyle })
+                let endpointconfig = Object.assign({}, endpointInput, { maxConnections: 1, connector, connectorStyle })
 
                 $print( endpointconfig );
 

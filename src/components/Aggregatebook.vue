@@ -226,6 +226,10 @@ export default {
 
         },
 
+        verify( id, contract ) {
+            return { success: true }
+        },
+
         accept( contract ) {
 
             if ( !Settings.ports.input.includes( contract.output ) ) 
@@ -252,7 +256,14 @@ export default {
 
           },
 
-        disconnected( contract ) {
+
+        connect() {
+            return { success: true }
+        },
+
+        disconnect( contract ) {
+
+            return;
 
             this.assets = this.assets.filter( f => !f.same( contract.asset ) );
 

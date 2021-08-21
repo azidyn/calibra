@@ -66,6 +66,9 @@ export default {
 
         },
 
+        verify( contract ) {
+            return Settings.ports.input.includes( contract.output );
+        },
 
         connect( source_id, contract ) {
 
