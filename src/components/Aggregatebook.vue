@@ -150,7 +150,7 @@ export default {
                 const T = this.tick;
                 const DP = this.dp;
 
-                this.quotes.bid.push({ asset, price: util.round_to_tick( bids[0][0], T,  DP )})
+                this.quotes.bid.push({ asset, price: util.round_to_tick( bids[0][0], T,  DP ) })
 
                 for ( t=0; t<bids.length; t++ ) {
 

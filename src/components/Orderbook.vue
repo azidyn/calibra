@@ -220,9 +220,9 @@ export default {
 
         // requestAnimationFrame( this.render );
 
-        this.socket = $network.socket( this.exchange );
-        this.socket.on(`orderbook:${this.symbol}`, this.update, this );
-        this.socket.orderbook( this.symbol );        
+        // this.socket = $network.socket( this.exchange );
+        // this.socket.on(`orderbook:${this.symbol}`, this.update, this );
+        // this.socket.orderbook( this.symbol );        
     },
 
     beforeDestroy() {

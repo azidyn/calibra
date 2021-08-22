@@ -26,6 +26,8 @@ import Orderbook        from './components/Orderbook';
 import Imbalance        from './components/Imbalance';
 import Aggregatebook    from './components/Aggregatebook';
 
+import PlumbConfig      from './conf/plumb';
+
 const Component = {
     Orderbook,
     Imbalance,
@@ -102,6 +104,10 @@ export default {
 
             jsPlumb.ready(() => {
 
+                jsPlumb.bind("dblclick", c => {
+                    jsPlumb.deleteConnection( c )
+                });
+
                 jsPlumb.bind("connection", (params, originalEvent) => {
                     
                     const tc = this.comps.find( f => f.id == params.targetId );
@@ -175,30 +181,15 @@ export default {
                         return;
                     }
 
-
-
-
-
                 });                
-
-                // jsPlumb.bind('beforeStartDetach', function(p) {
-                //     $print('beforestartdet', p )
-                // });
-
-                // jsPlumb.bind('connectionMoved', p => $print('connectionMoved', p) );
 
                 jsPlumb.importDefaults({
                     DragOptions: { cursor: 'hand', zIndex: 2000 },
                     PaintStyle: { stroke: '#666' },
                     EndpointHoverStyle: { fill: "orange" },
                     HoverPaintStyle: { stroke: "orange" },
-                    EndpointStyle: { width: 16, height: 16, stroke: '#666', fill: '#888' },
-                    Connector:[ "Bezier", { curviness: 65 }],
-                    ConnectorStyle: { stroke: '#00F', strokeWidth: 6 },
-
-                    Endpoint: "Rectangle",
-                    // Endpoint: ["Dot", {radius: 10}],
-
+                    Connector: [ "Flowchart", { /*stub: [40, 60],*/ gap: 10, cornerRadius: 5, alwaysRespectStubs: true } ],
+                    Endpoint: "Dot",
                     Anchors: "AutoDefault",
                     Container: "app",
 
@@ -206,117 +197,20 @@ export default {
                         [ "Arrow", {
                             location: 1,
                             id: "arrow",
-                            length: 14,
-                            foldback: 0.8
+                            length: 12,
+                            width: 12,
+                            foldback: 0.75
                         } ],
-                        // [ "Label", { label: "FOO", id: "label", cssClass: "aLabel" }]
                     ]                    
                 });
 
-                const connectorStyle = {
-                    stroke:'#666',
-                    strokeWidth: 5
-                };
+                let endpointconfig = Object.assign({}, PlumbConfig.endpoint.input, { maxConnections: 5  })
 
-                const connector = [ "Bezier", { curviness: 65 }];
-
-                const endpointInput = {
-                    isSource: false,
-                    isTarget: true,
-                    beforeDrop: params => {
-
-                        const tc = this.comps.find( f => f.id == params.targetId );
-                        const sc = this.comps.find( f => f.id == params.sourceId );
-
-                        const target = GetComp( params.targetId, this.$refs );
-                        const source = GetComp( params.sourceId, this.$refs );
-
-                        if ( !target || !source )  {
-                            console.error(`Error finding component: `, target, source );
-                            return false
-                        }
-
-                        const verify = target.verify( source.contract() );
-
-                        if ( !verify.success ) { 
-
-                            if ( verify.error )
-                                alert( verify.error );
-
-                            if ( verify.warning )
-                                $print( verify.warning );
-                        }
-
-                        return verify.success;
-      
-                    },
-
-                    // beforeStartDetach: params => {
-
-                    //     $print('start detatch: ', params );
-
-                    //     return true;
-                        
-                    // },
-
-                    // beforeDetach: params => {
-
-                    //     const tc = this.comps.find( f => f.id == params.targetId );
-                    //     const sc = this.comps.find( f => f.id == params.sourceId );
-
-                    //     const target = GetComp( params.targetId, this.$refs );
-                    //     const source = GetComp( params.sourceId, this.$refs );
-
-                    //     target.disconnect( params.sourceId, source.contract() );
-
-                    //     // Remove this target from listeners
-                    //     sc.outputs = sc.outputs.filter( f => f != params.targetId );
-                       
-                    // },
-
-                    anchor: "AutoDefault",
-                    paintStyle: { width: 16, height: 16, stroke: 'red', fill: 'red' }
-                }
-
-
-
-                const endpointOutput = { 
-                    isSource: true, 
-                    isTarget: false, 
-                    anchor: "AutoDefault", 
-                    maxConnections: 10, 
-                    connector, 
-                    connectorStyle,
-
-                    // beforeStartDetach: () => console.log('output before start detatch'),
-                    // beforeDetach: () => console.log('output before detatch'),
-                    // beforeDrop: () => console.log('output before drop'),
-                };
-
-
-                jsPlumb.addEndpoint(lob1.id, endpointOutput );
-                jsPlumb.addEndpoint(lob2.id, endpointOutput );
-
-                // const comp = Component[ imb1.component ];
-
-                let endpointconfig = Object.assign({}, endpointInput, { maxConnections: 5, connector, connectorStyle })
-
-                $print( endpointconfig );
-
+                jsPlumb.addEndpoint(lob1.id, PlumbConfig.endpoint.output );
+                jsPlumb.addEndpoint(lob2.id, PlumbConfig.endpoint.output );
                 jsPlumb.addEndpoint(imb1.id, endpointconfig );
                 jsPlumb.addEndpoint(agg1.id, endpointconfig );
 
-                // jsPlumb.addEndpoint(imb2.id, endpointconfig );
-
-                // // jsPlumb.addEndpoint(lob3.id, { isSource: true, isTarget: false, anchor: "AutoDefault" });
-
-                // jsPlumb.bind("connection", (info, originalEvent) => {
-                //     console.log(info, originalEvent)
-                // });            
-
-                jsPlumb.bind("dblclick", c => {
-                    console.log( c )
-                })
 
 
             });
