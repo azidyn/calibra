@@ -12,6 +12,7 @@
                 :id="w.id" 
                 :inputs="w.inputs"
                 :outputs="w.outputs"
+                @cleartargets="cleartargets( w.outputs )"
             >
             </component>
         </VueDragResize>
@@ -61,6 +62,19 @@ export default {
 
     methods: {
 
+        // Comp signalled to disconnect all of it's connections
+        cleartargets( outputs ) {
+
+            // $print('wiping conenctions:', outputs )
+
+            for ( const o of outputs ) {
+                // console.log( o.connection )
+                jsPlumb.deleteConnection( o.connection )
+            }
+                
+
+        },
+
         resize(newRect, win) {
 
             win.size.width = newRect.width;
@@ -74,8 +88,8 @@ export default {
 
     mounted() {
 
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('ibybit', 'BTCUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('bitmex', 'XBTUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('bitmex', 'XBTUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('ibybit', 'BTCUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
         
         this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
         // this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
@@ -109,6 +123,8 @@ export default {
                 });
 
                 jsPlumb.bind("connection", (params, originalEvent) => {
+
+                    console.log( 'connection:', params )
                     
                     const tc = this.comps.find( f => f.id == params.targetId );
                     const sc = this.comps.find( f => f.id == params.sourceId );
@@ -121,15 +137,15 @@ export default {
                         return false
                     }
 
-                    sc.outputs.push( params.targetId );
+                    sc.outputs.push({ connection: params.connection, targetId: params.targetId });
 
                     return target.connect( params.sourceId, source.contract() );
-                    
 
                 });                
 
                 jsPlumb.bind("connectionDetached", (params, originalEvent) => {
 
+                    
                     const tc = this.comps.find( f => f.id == params.targetId );
                     const sc = this.comps.find( f => f.id == params.sourceId );
 
@@ -139,7 +155,7 @@ export default {
                     target.disconnect( params.sourceId, source.contract() );
 
                     // Remove this target from listeners
-                    sc.outputs = sc.outputs.filter( f => f != params.targetId );
+                    sc.outputs = sc.outputs.filter( f => f.targetId != params.targetId );
 
                 });                
 
@@ -163,6 +179,8 @@ export default {
 
                         const sourceId = params.newSourceId;
 
+                        $print('MOVED => moved sources target ');
+
                         // const nt = this.comps.find( f => f.id == params.newTargetId );
                         // const ot = this.comps.find( f => f.id == params.originalTargetId );
                         const sc = this.comps.find( f => f.id == sourceId );
@@ -172,11 +190,12 @@ export default {
 
                         // Disconnect the original target, remove from source listeners
                         otarget.disconnect( sourceId, source.contract() );
-                        sc.outputs = sc.outputs.filter( f => f != params.originalTargetId );
+                        sc.outputs = sc.outputs.filter( f => f.targetId != params.originalTargetId );
 
                         // Connect the new target
                         ntarget.connect( sourceId, source.contract() );
-                        sc.outputs.push( params.targetId );
+
+                        // sc.outputs will be updated in the 'connection' event 
 
                         return;
                     }
@@ -188,7 +207,7 @@ export default {
                     PaintStyle: { stroke: '#666' },
                     EndpointHoverStyle: { fill: "orange" },
                     HoverPaintStyle: { stroke: "orange" },
-                    Connector: [ "Flowchart", { /*stub: [40, 60],*/ gap: 10, cornerRadius: 5, alwaysRespectStubs: true } ],
+                    Connector: [ "Straight", { /*stub: [40, 60],*/ gap: 10, cornerRadius: 5, alwaysRespectStubs: true } ],
                     Endpoint: "Dot",
                     Anchors: "AutoDefault",
                     Container: "app",
@@ -204,11 +223,40 @@ export default {
                     ]                    
                 });
 
-                let endpointconfig = Object.assign({}, PlumbConfig.endpoint.input, { maxConnections: 5  })
+                let endpointconfig = Object.assign({}, PlumbConfig.endpoint.input, { 
+
+                    maxConnections: 5,
+
+                    beforeDrop: params => {
+
+                        const tc = this.comps.find( f => f.id == params.targetId );
+                        const sc = this.comps.find( f => f.id == params.sourceId );
+                        
+                        const target = GetComp( params.targetId, this.$refs );
+                        const source = GetComp( params.sourceId, this.$refs );
+                        if ( !target || !source )  {
+                            console.error(`Error finding component: `, target, source );
+                            return false
+                        }
+                        const verify = target.verify( source.contract() );
+                        if ( !verify.success ) { 
+                            if ( verify.error )
+                                alert( verify.error );
+                            if ( verify.warning )
+                                $print( verify.warning );
+                        }
+                        return verify.success;
+
+                    }
+                
+                });
+
 
                 jsPlumb.addEndpoint(lob1.id, PlumbConfig.endpoint.output );
                 jsPlumb.addEndpoint(lob2.id, PlumbConfig.endpoint.output );
                 jsPlumb.addEndpoint(imb1.id, endpointconfig );
+
+                jsPlumb.addEndpoint(agg1.id, PlumbConfig.endpoint.output );
                 jsPlumb.addEndpoint(agg1.id, endpointconfig );
 
 
@@ -216,20 +264,6 @@ export default {
             });
         });
 
-
-
-        // setTimeout( ()=> {
-
-        //     const i1 = this.windows[0];
-        //     const i2 = this.windows[1];
-
-        //     // this.jsp.connect({
-        //     //     source: i1.id,
-        //     //     target: i2.id,
-        //     //     endpoint: "Rectangle"
-        //     // });            
-
-        // }, 1000 );
 
     },
 

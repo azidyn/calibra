@@ -1,6 +1,7 @@
 <template>
     <div>
         <Title :text="`${exchange}:${symbol}`"/>
+        {{ outputs.map( m => m.targetId ) }}
         <div v-if="snapshot">
             {{ snapshot.bid }}
             <!-- <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas> -->
@@ -44,24 +45,24 @@ export default {
 
     watch: {
 
-        outputs: {
+        // outputs: {
 
-            immediate: true,
-            deep: true,
+        //     immediate: true,
+        //     deep: true,
 
-            handler(n ,o ) {
+        //     handler(n ,o ) {
                 
-                if ( this.outputs.length == 0 ) {
+        //         if ( this.outputs.length == 0 ) {
 
-                    this.heartbeat( false );
+        //             this.heartbeat( false );
 
-                } else {
+        //         } else {
 
-                    this.heartbeat( true );
-                }
-            }
+        //             this.heartbeat( true );
+        //         }
+        //     }
 
-        },
+        // },
 
         size: {
             deep: true,
@@ -157,10 +158,12 @@ export default {
 
         notify() {
 
+            return; 
+
             for ( const L of this.outputs )  {
 
-                $mitt.emit(`${L}:snapshot`, { asset: this.asset, snapshot: this.snapshot } );
-                $mitt.emit(`${L}:orderbook`, { asset: this.asset, orderbook: this.orderbook } );
+                $mitt.emit(`${L.targetId}:snapshot`, { asset: this.asset, snapshot: this.snapshot } );
+                $mitt.emit(`${L.targetId}:orderbook`, { asset: this.asset, orderbook: this.orderbook } );
 
             }
 

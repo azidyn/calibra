@@ -2,6 +2,7 @@
   
     <div>
         <Title :text="`Imbalance: ${inputs}`"></Title>
+        {{ assets }}
         <div v-if="assets.length > 0">
             {{ balance }}
         </div>
@@ -19,7 +20,7 @@ import Title from './common/Title.vue';
 
 const Settings = {
     ports: {
-        input: ['Orderbook'],
+        input: ['Orderbook', 'Aggregatebook'],
         output: 'TimeSeries'
     },
     connections: 1
@@ -70,24 +71,12 @@ export default {
         verify( contract ) {
 
             if ( !Settings.ports.input.includes( contract.output ) ) 
-                return false;
+                return { success: false, error: 'Input is not compatible' }
+
+            $print('asset=', contract.asset )
+
+            return $asset.uniquecompatible( this.assets, contract.asset );
             
-            const asset = contract.asset;
-
-            // This is a blank, fresh orderbook always return true
-            if ( this.assets.length == 0 )
-                return { success: true };
-
-            for ( const A of this.assets ) {
-                if ( A.same( asset ) ) 
-                    return { success: false, warning: `Symbol already included in this aggregate book`};
-
-                if ( !A.compatible( asset ) ) 
-                    return { success: false, error: `Symbol ${asset.symbol} doesn't match this orderbook`};
-            }
-
-
-            return { success: true }            
         },
 
         connect( source_id, contract ) {
@@ -98,6 +87,7 @@ export default {
         },
 
         disconnect( source_id, contract ) {
+
 
             this.assets = this.assets.filter( f => !f.same( contract.asset ) );
             // this.inputs = this.inputs.filter( f => f != source_id );

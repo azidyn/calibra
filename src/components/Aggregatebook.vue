@@ -75,6 +75,10 @@ export default {
 
     computed: {
 
+        normalized() {
+            return this.assets.length ? this.assets[0].normalized : null;
+        },
+
         megabook () {
 
             return this.mega ? this.mega.snapshot( this.levels ).bid : [];
@@ -223,7 +227,7 @@ export default {
         notify() {
 
             // for ( const L of this.outputs ) 
-            //     $mitt.emit(L, { orderbook: this.snapshot } );
+            //     $mitt.emit(L.targetId, { orderbook: this.snapshot } );
 
         },
 
@@ -232,38 +236,26 @@ export default {
             if ( !Settings.ports.input.includes( contract.output ) ) 
                 return false;
             
-            const asset = contract.asset;
-
-            // This is a blank, fresh orderbook always return true
-            if ( this.assets.length == 0 )
-                return { success: true };
-
-            for ( const A of this.assets ) {
-                if ( A.same( asset ) ) 
-                    return { success: false, message: `Symbol already included in this aggregate book`};
-
-                if ( !A.compatible( asset ) ) 
-                    return { success: false, message: `Symbol ${asset.symbol} doesn't match this orderbook`};
-            }
-
-
-            return { success: true }
+            return $asset.uniquecompatible( this.assets, contract.asset );
 
           },
 
 
         connect( source_id, contract ) {
            
-            const asset = contract.asset;
-            this.assets.push( asset );
+            this.assets.push( contract.asset );
 
         },
 
         disconnect( source_id, contract ) {
 
-            this.assets = this.assets.filter( f => !f.same( contract.asset ) );
 
+            this.assets = this.assets.filter( f => !f.same( contract.asset ) );
             delete this.snapshots[ contract.asset.identifier() ];
+
+            // No more inputs, disconnect any targets/children
+            if ( this.assets.length === 0 ) 
+                this.$emit('cleartargets');
 
         },
 
@@ -271,7 +263,7 @@ export default {
             return {
                 input: Settings.ports.input,
                 output: Settings.ports.output,
-                assets: this.assets,
+                asset: this.normalized ? $asset.aggregate( this.normalized ) : null
             }
         },
 

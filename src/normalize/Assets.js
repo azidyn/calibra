@@ -1,24 +1,6 @@
 
-class ExchangeAsset {
-    constructor( opts ) {
-        
-        for ( const k in opts )
-            this[ k ] = opts[ k ];
+import ExchangeAsset  from "./ExchangeAsset";
 
-    }
-
-    identifier() {
-        return `${this.exchange}:${this.symbol}`;
-    }
-
-    same( asset ) {
-        return this.identifier() == asset.identifier();
-    }
-
-    compatible( asset ) {
-        return this.normalized == asset.normalized; 
-    }
-}
 
 const MEX = 'bitmex', IBYB ='ibybit', FTX = 'ftx';
 const FUT = 'futures';
