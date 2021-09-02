@@ -126,8 +126,8 @@ export default {
 
                     console.log( 'connection:', params )
                     
-                    const tc = this.comps.find( f => f.id == params.targetId );
-                    const sc = this.comps.find( f => f.id == params.sourceId );
+                    // const tc = this.comps.find( f => f.id == params.targetId );
+                    // const sc = this.comps.find( f => f.id == params.sourceId );
 
                     const target = GetComp( params.targetId, this.$refs );
                     const source = GetComp( params.sourceId, this.$refs );
@@ -137,9 +137,12 @@ export default {
                         return false
                     }
 
-                    sc.outputs.push({ connection: params.connection, targetId: params.targetId });
+                    // sc.outputs.push({ connection: params.connection, targetId: params.targetId });
 
-                    return target.connect( params.sourceId, source.contract() );
+                    target.input({ sourceId: params.sourceId, connection: params.connection });
+                    source.output({ targetId: params.targetId, connection: params.connection });
+
+                    // return target.connect( params.sourceId, source.contract() );
 
                 });                
 
@@ -152,10 +155,15 @@ export default {
                     const target = GetComp( params.targetId, this.$refs );
                     const source = GetComp( params.sourceId, this.$refs );
 
-                    target.disconnect( params.sourceId, source.contract() );
+                    // target.disconnect( params.sourceId, source.contract() );
+                    target.xinput( params.sourceId );
+                    source.xoutput( params.targetId );
 
                     // Remove this target from listeners
-                    sc.outputs = sc.outputs.filter( f => f.targetId != params.targetId );
+                    // sc.outputs = sc.outputs.filter( f => f.targetId != params.targetId );
+
+                    
+
 
                 });                
 
@@ -229,22 +237,27 @@ export default {
 
                     beforeDrop: params => {
 
-                        const tc = this.comps.find( f => f.id == params.targetId );
-                        const sc = this.comps.find( f => f.id == params.sourceId );
+                        // const tc = this.comps.find( f => f.id == params.targetId );
+                        // const sc = this.comps.find( f => f.id == params.sourceId );
                         
                         const target = GetComp( params.targetId, this.$refs );
                         const source = GetComp( params.sourceId, this.$refs );
+
                         if ( !target || !source )  {
                             console.error(`Error finding component: `, target, source );
                             return false
                         }
+
+                        // Check this input is compatible with the target 
                         const verify = target.verify( source.contract() );
+
                         if ( !verify.success ) { 
                             if ( verify.error )
                                 alert( verify.error );
                             if ( verify.warning )
                                 $print( verify.warning );
                         }
+                        
                         return verify.success;
 
                     }

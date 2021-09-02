@@ -1,8 +1,13 @@
 <template>
     <div>
         <Title :text="`${exchange}:${symbol}`"/>
-        {{ outputs.map( m => m.targetId ) }}
+
+        {{ config }}
+        <!-- inputs {{ ainputs }}
+        <br/>
+        outputs {{ aoutputs }} -->
         <div v-if="snapshot">
+
             {{ snapshot.bid }}
             <!-- <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas> -->
         </div>
@@ -21,12 +26,15 @@ const Settings = {
 
 
 import Title from './common/Title.vue';
-const Clone = o => o ? JSON.parse( JSON.stringify( o )) : null;
+
+import { Connection } from './mixins/Connection';
 
 export default {    
 
-    props: ['config', 'size', 'id', 'outputs', 'inputs'],
+    mixins: [ Connection ],
 
+    props: ['config', 'size', 'id' ], //, 'outputs', 'inputs'],
+   
     components: { Title },
 
     data() {
@@ -73,6 +81,8 @@ export default {
     },
 
     computed: {
+
+
         canvsize() {
             return { width: this.size.width - 10, height: this.size.height - 30 }
         },
@@ -193,11 +203,17 @@ export default {
 
         },
 
-        accept( ) {
-            return { success: false }
+        verify( contract ) {
+
+            if ( !Settings.ports.input.includes( contract.output ) ) 
+                return { success: false, error: 'Input is not compatible' }
+
+            return { success: true }
+
         },
 
         contract() {
+
             return {
                 
                 input: Settings.ports.input,
@@ -237,18 +253,6 @@ export default {
     },
 
 
-    // accept( component ) {
-    //     return false;
-    // },
-
-    // settings() {
-    //     return Settings;
-    // },
-
-    test: {
-        whatever: 123,
-        hello: 'String guy'
-    }
 
 }
 </script>

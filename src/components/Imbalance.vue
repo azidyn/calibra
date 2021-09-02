@@ -1,14 +1,19 @@
 <template>
   
     <div>
-        <Title :text="`Imbalance: ${inputs}`"></Title>
-        {{ assets }}
+        <Title :text="`Imbalance (${Object.keys(this.inputs).length})`"></Title>
+        inputs:
+        {{ ainputs}}
+        <br/>
+        outputs:
+        {{ aoutputs }}
+        <!-- {{ assets }}
         <div v-if="assets.length > 0">
             {{ balance }}
         </div>
         <div v-else>
             Connect an orderbook!
-        </div>
+        </div> -->
     </div>
 
 </template>
@@ -17,6 +22,7 @@
 <script>
 
 import Title from './common/Title.vue';
+import { Connection } from './mixins/Connection';
 
 const Settings = {
     ports: {
@@ -28,13 +34,13 @@ const Settings = {
 
 export default {
 
-    props: ['config', 'size', 'id', 'outputs' ],
+    mixins: [ Connection ],
+    props: ['config', 'size', 'id' ],
 
     components: { Title },
 
     data() {
         return { 
-            inputs: [],
             assets: [],
             data: null,
             total: {
@@ -45,6 +51,7 @@ export default {
     },
 
     computed: { 
+
         balance() {
             const sum = this.total.bid + this.total.ask;
             return { 
@@ -73,26 +80,10 @@ export default {
             if ( !Settings.ports.input.includes( contract.output ) ) 
                 return { success: false, error: 'Input is not compatible' }
 
-            $print('asset=', contract.asset )
-
-            return $asset.uniquecompatible( this.assets, contract.asset );
-            
+            return { success: true }
+           
         },
 
-        connect( source_id, contract ) {
-
-            const asset = contract.asset;
-            this.assets.push( asset );
-
-        },
-
-        disconnect( source_id, contract ) {
-
-
-            this.assets = this.assets.filter( f => !f.same( contract.asset ) );
-            // this.inputs = this.inputs.filter( f => f != source_id );
-
-        },
 
         contract() {
 
@@ -105,21 +96,10 @@ export default {
     mounted() {
 
         $mitt.on( `${this.id}:snapshot`, this.update );
+        $mitt.on( `${this.id}:config`, this.configure );
 
     },
 
-
-    // accept( component ) {
-
-    //     if ( Settings.ports.input.includes( component.settings().ports.output ) ) {
-    //         $print('accepted')
-    //         return true;
-    //     }
-
-    //     $print('failed', component.settings().ports, Settings.ports.input )
-    //     return false;
-
-    // },
 
     settings() {
         return Settings;

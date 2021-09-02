@@ -1,13 +1,22 @@
 <template>
     <div>
         <Title :text="`Aggregate ${assetstitle}`"/>
-        <div>
+        inputs:
+        {{ ainputs }}
+        <br/>
+        outputs:
+        {{ aoutputs }}        
+        <br>
+        assets:
+        {{ assets }}
+        
+        <!-- <div>
             {{ assets }}
             <div v-for="(bid, index) in megabook" :key="index" :style="stylebid( bid[0] )">
                 {{ bid }}
             </div>
     
-        </div>
+        </div> -->
     </div>
 </template>
 
@@ -21,15 +30,17 @@ const Settings = {
     connections: 10
 }
 
+import { Connection } from './mixins/Connection';
 
 import Title    from './common/Title.vue';
 import Book     from '../lob';
 import util     from '../util/util';
 
-
 export default {    
 
-    props: ['config', 'size', 'id', 'outputs', 'inputs'],
+    mixins: [ Connection ],
+
+    props: ['config', 'size', 'id'],
 
     components: { Title },
 
@@ -42,8 +53,7 @@ export default {
             snapshots: {},
 
             timer: null,
-
-        
+       
             assets: [],
         
             levels: 20,
@@ -53,25 +63,27 @@ export default {
                 ask: []
             },
 
-            mega: null
+            mega: null,
+
+            asset: null // The normalized symbol for this aggregate book
 
         }
     },
 
-    watch: {
-        outputs(n, o ) {
+    // watch: {
+    //     outputs(n, o ) {
 
-            if ( this.outputs.length == 0 ) {
+    //         if ( this.outputs.length == 0 ) {
 
-                this.heartbeat( false );
+    //             this.heartbeat( false );
 
-            } else {
+    //         } else {
 
-                this.heartbeat( true );
-            }
+    //             this.heartbeat( true );
+    //         }
 
-        }
-    },
+    //     }
+    // },
 
     computed: {
 
@@ -227,43 +239,51 @@ export default {
         notify() {
 
             // for ( const L of this.outputs ) 
-            //     $mitt.emit(L.targetId, { orderbook: this.snapshot } );
+            //     $mitt.emit(L.targetId, { orderbook: this.snapshot, contract } );
 
         },
 
         verify( contract ) {
 
             if ( !Settings.ports.input.includes( contract.output ) ) 
-                return false;
-            
-            return $asset.uniquecompatible( this.assets, contract.asset );
+                return { success: false, error: 'Input is not compatible' }
 
-          },
+            const ret = $asset.uniquecompatible( this.assets, contract.asset );
 
-
-        connect( source_id, contract ) {
+            if ( !ret.success )
+                return ret;
            
-            this.assets.push( contract.asset );
+            this.assets.push( contract.asset )
+
+            return ret;
 
         },
+        
 
-        disconnect( source_id, contract ) {
-
-
-            this.assets = this.assets.filter( f => !f.same( contract.asset ) );
-            delete this.snapshots[ contract.asset.identifier() ];
-
-            // No more inputs, disconnect any targets/children
-            if ( this.assets.length === 0 ) 
-                this.$emit('cleartargets');
-
+        xinput( sourceId ) {
+            console.log('disconnected ', sourceId );
+            this.$delete( this.inputs, sourceId );
         },
+
+
+
+        // disconnect( source_id, contract ) {
+
+
+
+        //     this.assets = this.assets.filter( f => !f.same( contract.asset ) );
+        //     delete this.snapshots[ contract.asset.identifier() ];
+
+        //     // No more inputs, disconnect any targets/children
+        //     if ( this.assets.length === 0 ) 
+        //         this.$emit('cleartargets');
+
+        // },
 
         contract() {
             return {
                 input: Settings.ports.input,
-                output: Settings.ports.output,
-                asset: this.normalized ? $asset.aggregate( this.normalized ) : null
+                output: Settings.ports.output
             }
         },
 
@@ -303,7 +323,7 @@ export default {
         // this.socket.orderbook( this.symbol );        
 
         $mitt.on( `${this.id}:orderbook`, this.update );
-        $mitt.on( `${this.id}:connection`, this.connection );
+        // $mitt.on( `${this.id}:connection`, this.connection );
 
     },
 
