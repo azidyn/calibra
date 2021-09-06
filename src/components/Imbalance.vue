@@ -1,12 +1,8 @@
 <template>
   
     <div>
-        <Title :text="`Imbalance (${Object.keys(this.inputs).length})`"></Title>
-        inputs:
-        {{ ainputs}}
-        <br/>
-        outputs:
-        {{ aoutputs }}
+        <Title :text="`Imbalance (${Object.keys(this.connections.inputs).length})`"></Title>
+        {{ multi }}
         <!-- {{ assets }}
         <div v-if="assets.length > 0">
             {{ balance }}
@@ -41,23 +37,20 @@ export default {
 
     data() {
         return { 
-            assets: [],
-            data: null,
-            total: {
-                bid: 0,
-                ask: 0
-            }
+            multi: {} 
         }
     },
 
     computed: { 
 
         balance() {
-            const sum = this.total.bid + this.total.ask;
-            return { 
-                bid: sum ? this.total.bid / sum : 0,
-                ask: sum ? this.total.ask / sum : 0
-            }
+
+            return { };
+            // const sum = this.total.bid + this.total.ask;
+            // return { 
+            //     bid: sum ? this.total.bid / sum : 0,
+            //     ask: sum ? this.total.ask / sum : 0
+            // }
         }
     },
 
@@ -65,13 +58,33 @@ export default {
 
         update( data ) {
 
-            this.data = data.snapshot;
+            const snapshot = data.snapshot;
 
-            if ( !this.data )
+            if ( !snapshot || !snapshot.bid || !snapshot.ask )
                 return;
+        
+            const bid = snapshot.bid.reduce( (a,c ) => a + c[1], 0 )
+            const ask = snapshot.ask.reduce( (a,c ) => a + c[1], 0 )
+
+            const sum = bid + ask;
+
+            if ( sum ) 
+                this.$set( this.multi, data.sourceId, { bid: bid / sum , ask: ask / sum, asset: data.asset } );
+
+        },
+
+
+        input( opts ) {
+
+            const id = opts.sourceId;
+
+            this.$set( this.multi, id, { bid: 0, ask: 0 } );
+
+        },
+       
+        xinput( sourceId ) {
             
-            if ( this.data.bid ) this.total.bid = this.data.bid.reduce( (a,c ) => a + c[1], 0 );
-            if ( this.data.ask ) this.total.ask = this.data.ask.reduce( (a,c ) => a + c[1], 0 );
+            delete this.multi[ sourceId ];
 
         },
 
@@ -95,8 +108,8 @@ export default {
 
     mounted() {
 
+        console.log(`imbalance listening -- ${this.id}:snapshot`);
         $mitt.on( `${this.id}:snapshot`, this.update );
-        $mitt.on( `${this.id}:config`, this.configure );
 
     },
 

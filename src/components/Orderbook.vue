@@ -168,12 +168,12 @@ export default {
 
         notify() {
 
-            return; 
+            for ( const L of this.aoutputs ) {
 
-            for ( const L of this.outputs )  {
+                $print(`${L}:snapshot`);
 
-                $mitt.emit(`${L.targetId}:snapshot`, { asset: this.asset, snapshot: this.snapshot } );
-                $mitt.emit(`${L.targetId}:orderbook`, { asset: this.asset, orderbook: this.orderbook } );
+                $mitt.emit(`${L}:snapshot`, { asset: this.asset, snapshot: this.snapshot, sourceId: this.id } );
+                $mitt.emit(`${L}:orderbook`, { asset: this.asset, orderbook: this.orderbook, sourceId: this.id } );
 
             }
 
@@ -218,7 +218,7 @@ export default {
                 
                 input: Settings.ports.input,
                 output: Settings.ports.output,
-                asset: this.asset
+                // asset: this.asset
 
             }
 
@@ -239,9 +239,9 @@ export default {
 
         // requestAnimationFrame( this.render );
 
-        // this.socket = $network.socket( this.exchange );
-        // this.socket.on(`orderbook:${this.symbol}`, this.update, this );
-        // this.socket.orderbook( this.symbol );        
+        this.socket = $network.socket( this.exchange );
+        this.socket.on(`orderbook:${this.symbol}`, this.update, this );
+        this.socket.orderbook( this.symbol );        
     },
 
     beforeDestroy() {

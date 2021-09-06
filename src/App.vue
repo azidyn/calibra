@@ -88,22 +88,14 @@ export default {
 
     mounted() {
 
+
         this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('bitmex', 'XBTUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('ibybit', 'BTCUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('ibybit', 'ETHUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
         
         this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
         // this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
 
         this.comps.push({ id: `ab_${GenID()}`, component: 'Aggregatebook', config:{ }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
-
-        setTimeout( () => {
-
-            const obs = this.comps.filter( f => f.component == 'Orderbook' ).map( m => m.config.asset || {} );
-
-            console.log( obs );
-
-
-        }, 5000 );
 
         const lob1 = this.comps[0];
         const lob2 = this.comps[1];
@@ -124,8 +116,6 @@ export default {
 
                 jsPlumb.bind("connection", (params, originalEvent) => {
 
-                    console.log( 'connection:', params )
-                    
                     // const tc = this.comps.find( f => f.id == params.targetId );
                     // const sc = this.comps.find( f => f.id == params.sourceId );
 
@@ -139,8 +129,8 @@ export default {
 
                     // sc.outputs.push({ connection: params.connection, targetId: params.targetId });
 
-                    target.input({ sourceId: params.sourceId, connection: params.connection });
-                    source.output({ targetId: params.targetId, connection: params.connection });
+                    target._input({ sourceId: params.sourceId, connection: params.connection });
+                    source._output({ targetId: params.targetId, connection: params.connection });
 
                     // return target.connect( params.sourceId, source.contract() );
 
@@ -156,8 +146,8 @@ export default {
                     const source = GetComp( params.sourceId, this.$refs );
 
                     // target.disconnect( params.sourceId, source.contract() );
-                    target.xinput( params.sourceId );
-                    source.xoutput( params.targetId );
+                    target._xinput( params.sourceId );
+                    source._xoutput( params.targetId );
 
                     // Remove this target from listeners
                     // sc.outputs = sc.outputs.filter( f => f.targetId != params.targetId );
@@ -249,13 +239,13 @@ export default {
                         }
 
                         // Check this input is compatible with the target 
-                        const verify = target.verify( source.contract() );
+                        const verify = target.verify( source.contract(), params.sourceId );
 
                         if ( !verify.success ) { 
                             if ( verify.error )
                                 alert( verify.error );
-                            if ( verify.warning )
-                                $print( verify.warning );
+                            if ( verify.warn )
+                                $print( verify.warn );
                         }
                         
                         return verify.success;

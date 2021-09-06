@@ -1,14 +1,11 @@
 <template>
     <div>
-        <Title :text="`Aggregate ${assetstitle}`"/>
+        <Title :text="`Aggregate`"/>
         inputs:
         {{ ainputs }}
         <br/>
         outputs:
         {{ aoutputs }}        
-        <br>
-        assets:
-        {{ assets }}
         
         <!-- <div>
             {{ assets }}
@@ -54,8 +51,6 @@ export default {
 
             timer: null,
        
-            assets: [],
-        
             levels: 20,
 
             quotes: {
@@ -65,30 +60,18 @@ export default {
 
             mega: null,
 
-            asset: null // The normalized symbol for this aggregate book
+            asset: null, // The normalized symbol for this aggregate book
+
+            tick: 5      // Current tick level
 
         }
     },
 
-    // watch: {
-    //     outputs(n, o ) {
-
-    //         if ( this.outputs.length == 0 ) {
-
-    //             this.heartbeat( false );
-
-    //         } else {
-
-    //             this.heartbeat( true );
-    //         }
-
-    //     }
-    // },
 
     computed: {
 
         normalized() {
-            return this.assets.length ? this.assets[0].normalized : null;
+            return this.asset ? this.asset.normalized : null;
         },
 
         megabook () {
@@ -97,18 +80,9 @@ export default {
 
         },
 
-        tick() {
-            return 5;
-            return Math.max( ...this.assets.map( m => m.price.tick ) );
-        },
-
         dp() {
             return 0
         },
-
-        assetstitle() {
-            return this.assets.map( m => m.symbol ).join(',');
-        }
 
 
     },
@@ -117,10 +91,14 @@ export default {
 
         update( data ) {
 
-            // $print('update, tick', this.tick )
+            if ( this.incompatible( data ) ) 
+                return this.detatchsource( data.sourceId );
 
             if ( !data.orderbook )
                 return;
+
+            // Ensure tick matches the lowest resolution input
+            this.tick = Math.max( this.tick, data.asset.price.tick );
 
             const id = data.asset.identifier();
             const atick = data.asset.price.tick;
@@ -235,6 +213,52 @@ export default {
 
         },
 
+        incompatible( data ) {
+
+            // First time we're receiving any data
+            if ( !this.asset ) {
+
+                this.asset = $asset.aggregate( data.asset.normalized );
+
+                // // Tell any interested listeners we've switched data context
+                // for ( const L of this.aoutputs ) 
+                //     $mitt.emit( `${L}:calibrate`, { asset: this.asset } );
+                
+                return false;
+            }
+
+            // We already have assets, does this incoming data match it?
+            return !this.asset.compatible( data.asset );
+
+        },
+
+
+        detatchsource( sourceId ) {
+
+            // Delete from the graph
+            jsPlumb.deleteConnection( this.connections.inputs[ sourceId ] );
+            
+            // Remove from our list
+            this.xinput( sourceId );
+
+            // Notify user
+            console.log('removed bad source');
+
+        },
+
+
+        xinput( sourceId ) {
+
+            // Everything has been disconnected, reset the asset
+            if ( this.ainputs.length == 0 ) {
+
+                this.asset = null;
+                this.tick = 0;
+
+            }
+
+        },
+
 
         notify() {
 
@@ -243,42 +267,19 @@ export default {
 
         },
 
-        verify( contract ) {
+        verify( contract, sourceId ) {
 
             if ( !Settings.ports.input.includes( contract.output ) ) 
                 return { success: false, error: 'Input is not compatible' }
 
-            const ret = $asset.uniquecompatible( this.assets, contract.asset );
+            if ( this.connections.inputs[ sourceId ] )
+                return { success: false, warn: 'Input already attached' };
 
-            if ( !ret.success )
-                return ret;
-           
-            this.assets.push( contract.asset )
-
-            return ret;
+            return { success: true }
 
         },
-        
-
-        xinput( sourceId ) {
-            console.log('disconnected ', sourceId );
-            this.$delete( this.inputs, sourceId );
-        },
 
 
-
-        // disconnect( source_id, contract ) {
-
-
-
-        //     this.assets = this.assets.filter( f => !f.same( contract.asset ) );
-        //     delete this.snapshots[ contract.asset.identifier() ];
-
-        //     // No more inputs, disconnect any targets/children
-        //     if ( this.assets.length === 0 ) 
-        //         this.$emit('cleartargets');
-
-        // },
 
         contract() {
             return {
@@ -286,7 +287,6 @@ export default {
                 output: Settings.ports.output
             }
         },
-
         
 
         heartbeat( start=true ) {
