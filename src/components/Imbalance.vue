@@ -3,13 +3,6 @@
     <div>
         <Title :text="`Imbalance (${Object.keys(this.connections.inputs).length})`"></Title>
         {{ multi }}
-        <!-- {{ assets }}
-        <div v-if="assets.length > 0">
-            {{ balance }}
-        </div>
-        <div v-else>
-            Connect an orderbook!
-        </div> -->
     </div>
 
 </template>
@@ -41,19 +34,6 @@ export default {
         }
     },
 
-    computed: { 
-
-        balance() {
-
-            return { };
-            // const sum = this.total.bid + this.total.ask;
-            // return { 
-            //     bid: sum ? this.total.bid / sum : 0,
-            //     ask: sum ? this.total.ask / sum : 0
-            // }
-        }
-    },
-
     methods: {
 
         update( data ) {
@@ -74,20 +54,22 @@ export default {
         },
 
 
+        /* Set up our data */
         input( opts ) {
 
             const id = opts.sourceId;
-
             this.$set( this.multi, id, { bid: 0, ask: 0 } );
 
         },
        
+        /* Clean up our data */
         xinput( sourceId ) {
             
             delete this.multi[ sourceId ];
 
         },
 
+        /* Is the connecting archetype compatible? */
         verify( contract ) {
 
             if ( !Settings.ports.input.includes( contract.output ) ) 
@@ -99,9 +81,7 @@ export default {
 
 
         contract() {
-
             return Settings.ports;
-
         }
 
     },

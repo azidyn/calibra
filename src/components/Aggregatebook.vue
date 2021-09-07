@@ -1,19 +1,29 @@
 <template>
     <div>
         <Title :text="`Aggregate`"/>
-        inputs:
+        <!-- inputs:
         {{ ainputs }}
         <br/>
         outputs:
         {{ aoutputs }}        
-        
-        <!-- <div>
-            {{ assets }}
-            <div v-for="(bid, index) in megabook" :key="index" :style="stylebid( bid[0] )">
+         -->
+         sources: {{ Object.keys( this.snapshots ).length }}, tick = {{ tick }}, dp = {{ dp }}
+         <br/>
+         asks:
+        <div>
+            <div v-for="(ask, index) in megaask" :key="`a${index}`" >
+                {{ ask }}
+            </div>
+    
+        </div>
+         <br/>
+         bids:
+        <div>
+            <div v-for="(bid, index) in megabid" :key="index" >
                 {{ bid }}
             </div>
     
-        </div> -->
+        </div>
     </div>
 </template>
 
@@ -51,18 +61,19 @@ export default {
 
             timer: null,
        
-            levels: 20,
+            levels: 1,
 
-            quotes: {
-                bid: [],
-                ask: []
-            },
+            // quotes: {
+            //     bid: [],
+            //     ask: []
+            // },
 
             mega: null,
 
             asset: null, // The normalized symbol for this aggregate book
 
-            tick: 5      // Current tick level
+            tick: 5,      // Current tick level
+            dp: 999
 
         }
     },
@@ -74,16 +85,13 @@ export default {
             return this.asset ? this.asset.normalized : null;
         },
 
-        megabook () {
-
+        megabid () {
             return this.mega ? this.mega.snapshot( this.levels ).bid : [];
-
         },
 
-        dp() {
-            return 0
+        megaask () {
+            return this.mega ? this.mega.snapshot( this.levels ).ask.reverse() : [];
         },
-
 
     },
 
@@ -91,29 +99,35 @@ export default {
 
         update( data ) {
 
-            if ( this.incompatible( data ) ) 
+            if ( this.incompatible( data ) )  {
+                
+                $print('Incompatible data: ', data.asset.identifier() );
                 return this.detatchsource( data.sourceId );
+
+            }
 
             if ( !data.orderbook )
                 return;
 
             // Ensure tick matches the lowest resolution input
             this.tick = Math.max( this.tick, data.asset.price.tick );
+            this.dp = Math.min( this.dp, data.asset.price.dp );
 
-            const id = data.asset.identifier();
+            // Tick size of the incoming data
             const atick = data.asset.price.tick;
-            const dp = data.asset.price.dp;
 
+            // Calculate number of levels to read from this book to match our agg output
             const levs = this.numlevels( atick );
             
+            // Get best bid & ask for incoming data
             const quote = data.orderbook.quote();
 
+            // Find floor and ceiling of where to snapshot to
             const maxbid = quote.bid - ( levs * atick );
             const maxask = quote.ask + ( levs * atick );
 
-            // const snapshot = data.orderbook.snapshot( levs, maxbid, maxask );
-
-            this.snapshots[ id ] = { asset: data.asset, snapshot: data.orderbook.snapshot( levs, maxbid, maxask ) };
+            // Stored by source component
+            this.$set( this.snapshots, data.sourceId, { asset: data.asset, snapshot: data.orderbook.snapshot( levs, maxbid, maxask ) } );
 
             this.merge();
             
@@ -130,34 +144,78 @@ export default {
             else
                 this.mega.reset();
 
-            this.quotes.bid = [];
+            // this.quotes.bid = [];
 
+            /*
+                For each orderbook we have to aggregate 
+            */
             for ( const id in this.snapshots ) {
 
                 const book = this.snapshots[ id ].snapshot;
-                const asset = this.snapshots[ id ].asset;
+                // const asset = this.snapshots[ id ].asset;
 
                 // Bids
                 let t =0, bids = book.bid, asks = book.ask;
                 let mprice = 0;
                 let bid, ask;
-                const T = this.tick;
+                const T = 5;//this.tick;
                 const DP = this.dp;
 
-                this.quotes.bid.push({ asset, price: util.round_to_tick( bids[0][0], T,  DP ) })
+                // this.quotes.bid.push({ asset, price: util.round_to_tick( bids[0][0], T,  DP ) })
+
+                /*
+                    Iterate through this book's bids (decreasing price)
+                    These are in the asset's native tick resolution e.g. XBTUSD 0.5 ticks
+                */
+
+                
+                let lastbid = 0, lastask = 0;
 
                 for ( t=0; t<bids.length; t++ ) {
 
                     bid = bids[t];
-                    mprice = util.round_to_tick( bid[0], T,  DP );
+                    
+                    /* Mapped price: Native => Aggregate price */
+                    mprice = util.round_to_tick( bid[0], 5 ,  DP );
 
+                    lastbid = mprice;
+
+                    /* Use the delta version of Book() to merge with existing volume */
                     this.mega.deltabid( mprice, bid[1] );
-
+                    break;
                 }
+
+                /* 
+                    When grouping/aggregating ticks, need to ensure the ask prices
+                    are nudged into the next band so best.ask != best.bid price
+                */
+                const offset = 2.5;//T / 2;
+
+
+                for ( t=0; t<asks.length; t++ ) {
+
+                    ask = asks[t];
+
+                    mprice = util.round_to_tick( ask[0] + 2.5, 5, DP );
+
+                    lastask = mprice;
+                    
+                    this.mega.deltaask( mprice, ask[1] );
+
+                    break;
+                }
+
+                if ( lastask == lastbid ) {
+                    console.log('-------------------------')
+                    console.log(lastask)
+                    console.log( asks[0], bids[0])
+                }
+
+                break;
 
             }
 
-            this.quotes.bid.sort( (a,b) => b.price - a.price );
+            // this.quotes.bid.sort( (a,b) => b.price - a.price );
 
         },
 
@@ -208,57 +266,69 @@ export default {
         },
 
         numlevels( atick ) {
-
+            /*
+                e.g.  ( 5 / 0.5 ) * 20 == 200 `aticks` required to match
+            */
             return this.tick / atick * this.levels;
 
         },
 
         incompatible( data ) {
 
-            // First time we're receiving any data
+            /* 
+                First time receiving data 
+                Assign our `asset` a special aggregate asset based on 
+                the first time connection's asset 
+            */
             if ( !this.asset ) {
 
-                this.asset = $asset.aggregate( data.asset.normalized );
-
-                // // Tell any interested listeners we've switched data context
-                // for ( const L of this.aoutputs ) 
-                //     $mitt.emit( `${L}:calibrate`, { asset: this.asset } );
                 
+                this.asset = $asset.aggregate( data.asset.normalized );
                 return false;
+
             }
 
-            // We already have assets, does this incoming data match it?
+
+            /*
+                Our aggregate `asset` is already assigned, is this 
+                incoming data compatible?
+            */
             return !this.asset.compatible( data.asset );
 
         },
 
 
-        detatchsource( sourceId ) {
 
-            // Delete from the graph
-            jsPlumb.deleteConnection( this.connections.inputs[ sourceId ] );
-            
-            // Remove from our list
-            this.xinput( sourceId );
-
-            // Notify user
-            console.log('removed bad source');
-
-        },
-
-
+        /* Cleanup our data */
         xinput( sourceId ) {
 
-            // Everything has been disconnected, reset the asset
+            // Remove it's snapshot, exclude from merge
+            this.$delete( this.snapshots, sourceId );
+
+            console.log('inputs remain:', Object.keys( this.snapshots ) );
+
+            /* 
+                Everything has been disconnected, reset the asset 
+                for a new input
+            */
             if ( this.ainputs.length == 0 ) {
+
+                console.log('resetting')
+
+                this.mega = null;
+                this.snapshots = {};
+
+                // this.quotes = {
+                //     bid: [],
+                //     ask: []
+                // };
 
                 this.asset = null;
                 this.tick = 0;
-
+                this.dp = 999;
             }
 
         },
-
 
         notify() {
 
@@ -272,9 +342,6 @@ export default {
             if ( !Settings.ports.input.includes( contract.output ) ) 
                 return { success: false, error: 'Input is not compatible' }
 
-            if ( this.connections.inputs[ sourceId ] )
-                return { success: false, warn: 'Input already attached' };
-
             return { success: true }
 
         },
@@ -282,10 +349,7 @@ export default {
 
 
         contract() {
-            return {
-                input: Settings.ports.input,
-                output: Settings.ports.output
-            }
+            return Settings.ports;
         },
         
 
@@ -318,12 +382,8 @@ export default {
     },
 
     mounted() {
-        // this.socket = $network.socket( this.exchange );
-        // this.socket.on(`orderbook:${this.symbol}`, this.update, this );
-        // this.socket.orderbook( this.symbol );        
 
         $mitt.on( `${this.id}:orderbook`, this.update );
-        // $mitt.on( `${this.id}:connection`, this.connection );
 
     },
 
@@ -332,20 +392,6 @@ export default {
         this.heartbeat( false );
 
     },
-
-
-    // accept( component ) {
-    //     return false;
-    // },
-
-    // settings() {
-    //     return Settings;
-    // },
-
-    test: {
-        whatever: 123,
-        hello: 'String guy'
-    }
 
 }
 </script>

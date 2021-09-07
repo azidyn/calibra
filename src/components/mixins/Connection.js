@@ -32,7 +32,15 @@ export const Connection = {
 
         /* New source input connected to this comp */
         _input( opts ) {
+
+            /* Check for duplicates */
+            if ( this.connections.inputs[ opts.sourceId ] ) {
+                this.detatchsource( opts.sourceId );
+                return $print(`Input ${opts.sourceId} already attached`);
+            }
+
             this.$set( this.connections.inputs, opts.sourceId, opts.connection );
+
             if ( this.input )
                 this.input( opts );
         },
@@ -55,6 +63,17 @@ export const Connection = {
             if ( this.xoutput )
                 this.xoutput( targetId );
         },
+
+
+        detatchsource( sourceId ) {
+
+            // Delete from the graph
+            jsPlumb.deleteConnection( this.connections.inputs[ sourceId ] );
+            
+            // Remove from our list
+            this._xinput( sourceId );
+
+        },        
                      
 
     },

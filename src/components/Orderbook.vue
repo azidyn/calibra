@@ -6,11 +6,12 @@
         <!-- inputs {{ ainputs }}
         <br/>
         outputs {{ aoutputs }} -->
-        <div v-if="snapshot">
-
-            {{ snapshot.bid }}
+        <!-- <div v-if="snapshot">
+            <div v-for="(bid, index) in snapshot.bid" :key="index">
+                {{ bid }}
+            </div>
+        </div> -->
             <!-- <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas> -->
-        </div>
     </div>
 </template>
 
@@ -103,7 +104,7 @@ export default {
         update( data ) {
             
             this.orderbook = data.orderbook;
-            this.snapshot = data.orderbook.snapshot( 10 );
+            this.snapshot = data.orderbook.snapshot( 20 );
             this.heartbeat( true );
 
         },
@@ -170,7 +171,7 @@ export default {
 
             for ( const L of this.aoutputs ) {
 
-                $print(`${L}:snapshot`);
+                // $print(`${L}:snapshot`);
 
                 $mitt.emit(`${L}:snapshot`, { asset: this.asset, snapshot: this.snapshot, sourceId: this.id } );
                 $mitt.emit(`${L}:orderbook`, { asset: this.asset, orderbook: this.orderbook, sourceId: this.id } );
@@ -214,13 +215,7 @@ export default {
 
         contract() {
 
-            return {
-                
-                input: Settings.ports.input,
-                output: Settings.ports.output,
-                // asset: this.asset
-
-            }
+            return Settings.ports;
 
         }
 
@@ -230,18 +225,10 @@ export default {
 
     mounted() {
 
-        this.$nextTick( () => {
-            
-            // this.ctx = this.$refs['display'].getContext("2d");
-            // this.ctx.font = "10px, monospace";
-            
-        });
-
-        // requestAnimationFrame( this.render );
-
         this.socket = $network.socket( this.exchange );
         this.socket.on(`orderbook:${this.symbol}`, this.update, this );
         this.socket.orderbook( this.symbol );        
+
     },
 
     beforeDestroy() {
