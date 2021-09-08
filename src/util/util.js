@@ -29,6 +29,7 @@ export default {
     },
 
     round_to_tick: ( value, tick_size=0.5, dp=1 ) => Number((tick_size * Math.round( value/tick_size )).toFixed( dp )),
+    ceil_to_tick:  ( value, tick_size=0.5, dp=1 ) => Number((tick_size * Math.ceil(  value/tick_size )).toFixed( dp )),
     floor_to_tick: ( value, tick_size=0.5, dp=1 ) => Number((tick_size * Math.floor( value/tick_size )).toFixed( dp )),
 
     datetimelocale: ( epoch, parts='both' ) => {

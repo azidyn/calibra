@@ -7,7 +7,7 @@
         outputs:
         {{ aoutputs }}        
          -->
-         sources: {{ Object.keys( this.snapshots ).length }}, tick = {{ tick }}, dp = {{ dp }}
+         sources: {{ Object.keys( this.snapshots ).length }}, tick = {{ tick }}, dp = {{ dp }}, levels = {{ levels }}
          <br/>
          asks:
         <div>
@@ -61,7 +61,7 @@ export default {
 
             timer: null,
        
-            levels: 1,
+            levels: 10,
 
             // quotes: {
             //     bid: [],
@@ -72,7 +72,7 @@ export default {
 
             asset: null, // The normalized symbol for this aggregate book
 
-            tick: 5,      // Current tick level
+            tick: 10,      // Current tick level
             dp: 999
 
         }
@@ -151,15 +151,20 @@ export default {
             */
             for ( const id in this.snapshots ) {
 
+                const asset = this.snapshots[ id ].asset;
                 const book = this.snapshots[ id ].snapshot;
                 // const asset = this.snapshots[ id ].asset;
+
+                
 
                 // Bids
                 let t =0, bids = book.bid, asks = book.ask;
                 let mprice = 0;
                 let bid, ask;
-                const T = 5;//this.tick;
+                
                 const DP = this.dp;
+
+                const native = asset.price.tick == this.tick;
 
                 // this.quotes.bid.push({ asset, price: util.round_to_tick( bids[0][0], T,  DP ) })
 
@@ -167,7 +172,6 @@ export default {
                     Iterate through this book's bids (decreasing price)
                     These are in the asset's native tick resolution e.g. XBTUSD 0.5 ticks
                 */
-
                 
                 let lastbid = 0, lastask = 0;
 
@@ -175,34 +179,55 @@ export default {
 
                     bid = bids[t];
                     
-                    /* Mapped price: Native => Aggregate price */
-                    mprice = util.round_to_tick( bid[0], 5 ,  DP );
+                    /*
+                        Here, we're mapping prices from exchange native tick precision (asset.price.tick, e.g. 0.5 )
+                        to our aggregate tick precision e.g. this.tick = 5 
+                        
+                        For example using the above:
+                        
+                        exchange book       aggregate book
+                        -----------------------------------
+                            101.5       =>      100 
+                            102.0       =>      100 
+                            102.5       =>      105
+                            103.0       =>      105
+                            ...
+                            107.0       =>      105
+                            107.5       =>      110
+
+                        If the this.tick == exchange native then skip the conversion
+                        Why skip? Well, because I couldn't figure out the math to support
+                        all cases including same-same e.g. 0.5 => 0.5 and also
+                        ensuring the ask side is always in the next price group up
+                        
+                    */
+                    mprice = native ? bid[0] : util.round_to_tick( bid[0], this.tick , DP );
+
 
                     lastbid = mprice;
 
                     /* Use the delta version of Book() to merge with existing volume */
                     this.mega.deltabid( mprice, bid[1] );
-                    break;
+                   
                 }
 
                 /* 
                     When grouping/aggregating ticks, need to ensure the ask prices
                     are nudged into the next band so best.ask != best.bid price
                 */
-                const offset = 2.5;//T / 2;
-
+                const offset = this.tick / 2;
 
                 for ( t=0; t<asks.length; t++ ) {
 
                     ask = asks[t];
 
-                    mprice = util.round_to_tick( ask[0] + 2.5, 5, DP );
+                    // mprice = native ? ask[0] : util.round_to_tick( ask[0] + offset, this.tick, DP );
+                    mprice = native ? ask[0] : util.ceil_to_tick( ask[0] + offset, this.tick, DP );
 
                     lastask = mprice;
                     
                     this.mega.deltaask( mprice, ask[1] );
-
-                    break;
+                   
                 }
 
                 if ( lastask == lastbid ) {
@@ -211,7 +236,6 @@ export default {
                     console.log( asks[0], bids[0])
                 }
 
-                break;
 
             }
 

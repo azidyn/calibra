@@ -6,11 +6,11 @@
         <!-- inputs {{ ainputs }}
         <br/>
         outputs {{ aoutputs }} -->
-        <!-- <div v-if="snapshot">
+        <div v-if="snapshot">
             <div v-for="(bid, index) in snapshot.bid" :key="index">
                 {{ bid }}
             </div>
-        </div> -->
+        </div>
             <!-- <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas> -->
     </div>
 </template>
