@@ -35,11 +35,11 @@ export default class Book {
     }
 
     bid( price, size ) {
-        this.bids.set( price, size );
+        return this.bids.set( price, size );
     }
 
     ask( price, size ) {
-        this.asks.set( price, size );
+        return this.asks.set( price, size );
     }
 
     peek( side, price ) {

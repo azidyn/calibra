@@ -17,7 +17,7 @@ export default class Bids {
         
        this.reset();
        this.set = this.set_bids;
-       this.shadow = shadow;
+    //    this.shadow = shadow;
 
     }
 
@@ -49,20 +49,24 @@ export default class Bids {
     }
 
 
+    // Updates, inserts or deletes
+    // Returns the resultant volume difference ( delta ) at price
     set_bids( price, size, delta=false ) {
+
+        let diff = size;
 
         // First insert
         if ( !this.ticks.length ) {
 
-            this.ticks.push( this.shadow ? [ price, size, size ] : [ price, size ]);
+            // this.ticks.push( this.shadow ? [ price, size, size ] : [ price, size ]);
+            this.ticks.push( [ price, size ] );
             this.head = 0;
-            return;
+            return diff;
         }
 
         // Binary search our asks[] for closest price
         const i = this.find( price );
         const itemhead = this.ticks[ this.head ];
-        
        
         // Get the returned [ price, volume ]
         const item = this.ticks[ i ];
@@ -71,11 +75,16 @@ export default class Bids {
         if ( item[0] == price ) {
 
             // Update the size
-            let o = item[1];
+            // let o = item[1];
+            
+            // The delta here
+            diff = delta ? size : size - item[ 1 ];
+            
+
             item[1] = delta ? Math.max( 0 , item[1] + size ) : size;
 
-            if ( this.shadow )
-                item[2] = item[1] - o;
+            // if ( this.shadow )
+            //     item[2] = item[1] - o;
           
             if ( this.head == i && item[1] == 0 ) {
 
@@ -95,7 +104,7 @@ export default class Bids {
                 this.head = i;
             }
 
-            return;
+            return diff;
         }
 
         // New price level, insert it now
@@ -104,7 +113,8 @@ export default class Bids {
         let ins = after ? i+1 : i ;
 
         // Insert the new price level at array index `ins`
-        this.ticks.splice( ins, 0, this.shadow ? [ price, size, size ] : [ price, size ] );
+        // this.ticks.splice( ins, 0, this.shadow ? [ price, size, size ] : [ price, size ] );
+        this.ticks.splice( ins, 0, [ price, size ] );
 
         // Inserted a new level in front of the head. `this.head` index must be updated now
         // Note that `this.head` index is invalid now anyway because of the insert
@@ -120,6 +130,8 @@ export default class Bids {
             // With bids, `head` has to move up EVERY time there's an insert 
             this.head++;
         }
+
+        return diff;
 
     }
 
@@ -183,7 +195,8 @@ export default class Bids {
             for ( let t=this.head; t>=0; t--) {
 
                 if ( this.ticks[t][1] > 0 ) 
-                    book.push( this.shadow ? [ this.ticks[t][0], this.ticks[t][1], this.ticks[t][2] ] : [ this.ticks[t][0], this.ticks[t][1] ] );
+                    book.push( [ this.ticks[t][0], this.ticks[t][1] ] );
+                    // book.push( this.shadow ? [ this.ticks[t][0], this.ticks[t][1], this.ticks[t][2] ] : [ this.ticks[t][0], this.ticks[t][1] ] );
 
                 if ( book.length == levels ) break;
                 if ( maxprice && this.ticks[t][0] <= maxprice ) break;

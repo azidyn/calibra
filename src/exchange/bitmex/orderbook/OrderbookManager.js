@@ -71,9 +71,14 @@ export default class OrderbookManager {
         if ( !this.library[ instrument ] ) 
             return;
 
-        this.library[ instrument ][ action ]( msg.data );
+        const L = this.library[ instrument ];
 
-        return { instrument, orderbook: this.library[ instrument ].lob };
+        // Prepare to calculate deltas 
+        L.deltareset();
+
+        const deltas = L[ action ]( msg.data );
+
+        return { instrument, orderbook: this.library[ instrument ].lob, deltas };
     }
 
 

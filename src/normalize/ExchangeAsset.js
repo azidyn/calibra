@@ -9,7 +9,7 @@ export default class ExchangeAsset {
 
     }
 
-    identifier() {
+    get identifier() {
         return `${this.exchange}:${this.symbol}`;
     }
 
@@ -21,7 +21,7 @@ export default class ExchangeAsset {
     same( asset ) {
         if ( !asset ) 
             $print('null asset')
-        return this.identifier() == asset.identifier();
+        return this.identifier == asset.identifier;
     }
 
     /*

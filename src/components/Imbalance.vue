@@ -38,6 +38,8 @@ export default {
 
         update( data ) {
 
+            console.log('got snapshot', data )
+
             const snapshot = data.snapshot;
 
             if ( !snapshot || !snapshot.bid || !snapshot.ask )

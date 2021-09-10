@@ -1,20 +1,35 @@
 <template>
     <div id="app">
 
-        <VueDragResize v-for="(w, index) in comps" :key="index" :w="w.size.width" :h="w.size.height" v-on:resizing="n => resize(n, w)" v-on:dragging="n => resize(n, w)" :id="w.id" dragHandle=".drag" style="background:#ccc; z-index: 1">
-            <!-- <div class="drag noselect" style="background: #aaa">{{ 'orderbook'}}</div> -->
-            <component 
-                class="noselect"
-                :ref="`c_${w.id}`"
-                :is="w.component"  
-                :config="w.config" 
-                :size="w.size" 
-                :id="w.id" 
-                :inputs="w.inputs"
-                :outputs="w.outputs"
-                @cleartargets="cleartargets( w.outputs )"
-            >
-            </component>
+        <VueDragResize v-for="(w, index) in comps" 
+            :key="index" 
+            :w="w.size.width" 
+            :h="w.size.height" 
+            v-on:resizing="n => resize(n, w)" 
+            v-on:dragging="n => resize(n, w)" 
+            v-on:clicked=" n => click(n,w) "
+            :id="w.id" 
+            
+            :sticks="['br']"
+            style="background:#ccc; z-index: 1"
+        >
+            <!-- :isActive="w.active"
+            :preventActiveBehavior="true" -->
+        <!-- dragHandle=".drag"  -->
+        <!-- :isActive="w.active" -->
+                <component 
+                    class="noselect"
+                    :ref="`c_${w.id}`"
+                    :is="w.component"  
+                    :config="w.config" 
+                    :size="w.size" 
+                    :id="w.id" 
+                    :inputs="w.inputs"
+                    :outputs="w.outputs"
+                    @cleartargets="cleartargets( w.outputs )"
+                >
+                </component>
+
         </VueDragResize>
 
     </div>
@@ -25,6 +40,7 @@ import VueDragResize from 'vue-drag-resize';
 
 import Orderbook        from './components/Orderbook';
 import Imbalance        from './components/Imbalance';
+import LobDeltas        from './components/LobDeltas';
 import Aggregatebook    from './components/Aggregatebook';
 
 import PlumbConfig      from './conf/plumb';
@@ -49,14 +65,18 @@ export default {
         VueDragResize,
         Orderbook,
         Imbalance,
+        LobDeltas,
         Aggregatebook
     },
 
     data() {
         return {
             init: false,
+            clock: {
+                handle: null,
+                frequency: 500
+            },
             comps: [],
-            // jsp: null
         }
     },
 
@@ -75,6 +95,18 @@ export default {
 
         },
 
+        click( event, comp ) {
+            return;
+            
+            // $print(o,n)
+            
+            for ( const c of this.comps )
+                c.active = false;
+            
+            this.$nextTick( () => comp.active = true );
+
+        },
+
         resize(newRect, win) {
 
             win.size.width = newRect.width;
@@ -83,26 +115,41 @@ export default {
             for ( const i of this.comps )
                 jsPlumb.revalidate( i.id );
 
+        },
+
+        clockreset() {
+
+            if ( this.clock.handle )
+                clearInterval( this.clock.handle );
+
+            this.clock.handle = setInterval( () => $mitt.emit('*:clock'), this.clock.frequency );
+
         }
     },
 
     mounted() {
 
+        this.clockreset();
 
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('bitmex', 'XBTUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
-        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', config:{ asset: $asset.find('ibybit', 'BTCUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
+        this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook',  config:{ asset: $asset.find('bitmex', 'XBTUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
+        // this.comps.push({ id: `ob_${GenID()}`, component: 'Orderbook', active:false, config:{ asset: $asset.find('ibybit', 'BTCUSD') }, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
         
-        this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
-        // this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance', config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
+        this.comps.push({ id: `im_${GenID()}`, component: 'Imbalance',  config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
+        this.comps.push({ id: `ld_${GenID()}`, component: 'LobDeltas',  config:{}, size: { width: 150, height: 300 }, outputs: [], inputs: 0  });
 
-        this.comps.push({ id: `ab_${GenID()}`, component: 'Aggregatebook', config:{ }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
+
+        this.comps.push({ id: `ab_${GenID()}`, component: 'Aggregatebook',  config:{ }, size: { width: 150, height: 300 }, outputs: [], inputs: 0 });
+
+
+
 
         const lob1 = this.comps[0];
-        const lob2 = this.comps[1];
-        const imb1 = this.comps[2];
-        // const imb2 = this.comps[3];
+        // const lob2 = this.comps[1];
+        const imb1 = this.comps[1];
 
-        const agg1 = this.comps[3];
+        const agg1 = this.comps[2];
+
+        const lobdel = this.comps[3];
 
 
 
@@ -256,8 +303,9 @@ export default {
 
 
                 jsPlumb.addEndpoint(lob1.id, PlumbConfig.endpoint.output );
-                jsPlumb.addEndpoint(lob2.id, PlumbConfig.endpoint.output );
+                // jsPlumb.addEndpoint(lob2.id, PlumbConfig.endpoint.output );
                 jsPlumb.addEndpoint(imb1.id, endpointconfig );
+                jsPlumb.addEndpoint(lobdel.id, endpointconfig );
 
                 jsPlumb.addEndpoint(agg1.id, PlumbConfig.endpoint.output );
                 jsPlumb.addEndpoint(agg1.id, endpointconfig );

@@ -7,7 +7,7 @@
         outputs:
         {{ aoutputs }}        
          -->
-         sources: {{ Object.keys( this.snapshots ).length }}, tick = {{ tick }}, dp = {{ dp }}, levels = {{ levels }}
+         sources: {{ Object.keys( this.ainputs ).length }}, tick = {{ tick }}, dp = {{ dp }}, levels = {{ levels }}
          <br/>
          asks:
         <div>
@@ -68,11 +68,14 @@ export default {
             //     ask: []
             // },
 
-            mega: null,
+            mega: {
+                book: null,
+                snapshot: null
+            },
 
             asset: null, // The normalized symbol for this aggregate book
 
-            tick: 10,      // Current tick level
+            tick: 0,      // Current tick level
             dp: 999
 
         }
@@ -86,11 +89,13 @@ export default {
         },
 
         megabid () {
-            return this.mega ? this.mega.snapshot( this.levels ).bid : [];
+            return this.mega.snapshot ? this.mega.snapshot.bid : [];
+            // return this.mega ? this.mega.snapshot( this.levels ).bid : [];
         },
 
         megaask () {
-            return this.mega ? this.mega.snapshot( this.levels ).ask.reverse() : [];
+            return this.mega.snapshot ? this.mega.snapshot.ask.reverse() : [];
+            // return this.mega ? this.mega.snapshot( this.levels ).ask.reverse() : [];
         },
 
     },
@@ -101,7 +106,7 @@ export default {
 
             if ( this.incompatible( data ) )  {
                 
-                $print('Incompatible data: ', data.asset.identifier() );
+                $print('Incompatible data: ', data.asset.identifier );
                 return this.detatchsource( data.sourceId );
 
             }
@@ -109,7 +114,7 @@ export default {
             if ( !data.orderbook )
                 return;
 
-            // Ensure tick matches the lowest resolution input
+            // Ensure tick at least matches the lowest resolution input
             this.tick = Math.max( this.tick, data.asset.price.tick );
             this.dp = Math.min( this.dp, data.asset.price.dp );
 
@@ -118,31 +123,47 @@ export default {
 
             // Calculate number of levels to read from this book to match our agg output
             const levs = this.numlevels( atick );
-            
+
+           
             // Get best bid & ask for incoming data
             const quote = data.orderbook.quote();
 
-            // Find floor and ceiling of where to snapshot to
+            /* 
+                Find price floor and ceiling of where to snapshot price to.
+                Use a max price, cos if `levs`=200 that doesn't necessarily
+                mean all 200 price levels have volume; there will be gaps
+                and so level 200 might be way beyond the max bid/ask so 
+                be sure to crop it there
+            */
             const maxbid = quote.bid - ( levs * atick );
             const maxask = quote.ask + ( levs * atick );
 
             // Stored by source component
-            this.$set( this.snapshots, data.sourceId, { asset: data.asset, snapshot: data.orderbook.snapshot( levs, maxbid, maxask ) } );
+            this.$set( this.snapshots, data.sourceId, { asset: data.asset, snapshot: data.orderbook.snapshot( levs, maxbid, maxask ), orderbook: data.orderbook } );
 
             this.merge();
             
-            // this.orderbooks[ data.asset.identifier() ] = data.orderbook;
-            // Vue.set( this.orderbooks, data.asset.identifier(), data.orderbook );
+            // this.orderbooks[ data.asset.identifier ] = data.orderbook;
+            // Vue.set( this.orderbooks, data.asset.identifier, data.orderbook );
             // console.log( this.orderbooks )
 
         },
 
         merge() {
 
-            if ( !this.mega )
-                this.mega = new Book({ shadow: false });
+            /*
+
+                merge() is called after 1 or more of our snapshots{} is updated or a 
+                new one is inserted
+
+                `mega` the aggregated/merged book which is wiped each time here
+
+            */
+
+            if ( !this.mega.book )
+                this.mega.book = new Book({ shadow: false });
             else
-                this.mega.reset();
+                this.mega.book.reset();
 
             // this.quotes.bid = [];
 
@@ -155,16 +176,15 @@ export default {
                 const book = this.snapshots[ id ].snapshot;
                 // const asset = this.snapshots[ id ].asset;
 
-                
-
                 // Bids
-                let t =0, bids = book.bid, asks = book.ask;
+                let t=0, bids = book.bid, asks = book.ask;
                 let mprice = 0;
                 let bid, ask;
+                let destinationtick = this.tick;
                 
                 const DP = this.dp;
 
-                const native = asset.price.tick == this.tick;
+                const native = asset.price.tick == destinationtick;
 
                 // this.quotes.bid.push({ asset, price: util.round_to_tick( bids[0][0], T,  DP ) })
 
@@ -173,8 +193,6 @@ export default {
                     These are in the asset's native tick resolution e.g. XBTUSD 0.5 ticks
                 */
                 
-                let lastbid = 0, lastask = 0;
-
                 for ( t=0; t<bids.length; t++ ) {
 
                     bid = bids[t];
@@ -201,13 +219,10 @@ export default {
                         ensuring the ask side is always in the next price group up
                         
                     */
-                    mprice = native ? bid[0] : util.round_to_tick( bid[0], this.tick , DP );
-
-
-                    lastbid = mprice;
+                    mprice = native ? bid[0] : util.round_to_tick( bid[0], destinationtick , DP );
 
                     /* Use the delta version of Book() to merge with existing volume */
-                    this.mega.deltabid( mprice, bid[1] );
+                    this.mega.book.deltabid( mprice, bid[1] );
                    
                 }
 
@@ -215,31 +230,20 @@ export default {
                     When grouping/aggregating ticks, need to ensure the ask prices
                     are nudged into the next band so best.ask != best.bid price
                 */
-                const offset = this.tick / 2;
+                const offset = destinationtick / 2;
 
                 for ( t=0; t<asks.length; t++ ) {
 
                     ask = asks[t];
 
-                    // mprice = native ? ask[0] : util.round_to_tick( ask[0] + offset, this.tick, DP );
-                    mprice = native ? ask[0] : util.ceil_to_tick( ask[0] + offset, this.tick, DP );
-
-                    lastask = mprice;
-                    
-                    this.mega.deltaask( mprice, ask[1] );
+                    mprice = native ? ask[0] : util.ceil_to_tick( ask[0] + offset, destinationtick, DP );
                    
+                    this.mega.book.deltaask( mprice, ask[1] );
                 }
 
-                if ( lastask == lastbid ) {
-                    console.log('-------------------------')
-                    console.log(lastask)
-                    console.log( asks[0], bids[0])
-                }
+             }
 
-
-            }
-
-            // this.quotes.bid.sort( (a,b) => b.price - a.price );
+             this.mega.snapshot = this.mega.book.snapshot( this.levels );
 
         },
 
@@ -329,7 +333,7 @@ export default {
             // Remove it's snapshot, exclude from merge
             this.$delete( this.snapshots, sourceId );
 
-            console.log('inputs remain:', Object.keys( this.snapshots ) );
+            console.log('inputs remain:', Object.keys( this.ainputs ).length );
 
             /* 
                 Everything has been disconnected, reset the asset 
@@ -337,9 +341,7 @@ export default {
             */
             if ( this.ainputs.length == 0 ) {
 
-                console.log('resetting')
-
-                this.mega = null;
+                this.mega = { book: null, snapshot: null };
                 this.snapshots = {};
 
                 // this.quotes = {
@@ -356,8 +358,14 @@ export default {
 
         notify() {
 
-            // for ( const L of this.outputs ) 
-            //     $mitt.emit(L.targetId, { orderbook: this.snapshot, contract } );
+            // Empty book
+            if ( !this.asset ) 
+                return;
+
+            for ( const L of this.aoutputs ) {
+                // console.log(L,  { asset: this.asset, snapshot: this.mega.snapshot, sourceId: this.id }  )
+                $mitt.emit(`${L}:snapshot`, { asset: this.asset, snapshot: this.mega.snapshot, sourceId: this.id } );
+            }
 
         },
 
@@ -375,45 +383,31 @@ export default {
         contract() {
             return Settings.ports;
         },
-        
 
-        heartbeat( start=true ) {
-
-            return;
-            if ( start ) {
-
-                if ( this.timer )
-                    return;
-                
-                this.timer = setInterval( () => this.notify() , this.frequency)                
-
-                return;
-
-            } else {
-
-                if ( !this.timer )
-                    return;
-
-                clearInterval( this.timer );
-                this.timer = null;
-
-                return;
-            }
-
-        },
 
 
     },
 
     mounted() {
 
+        // setInterval( () => {
+
+        //     if ( this.tick == 1 )
+        //         this.tick = 5;
+        //     else
+        //         this.tick += 5;
+                
+        // }, 2*5000 );
+
         $mitt.on( `${this.id}:orderbook`, this.update );
+        $mitt.on('*:clock', this.notify );
+
 
     },
 
     beforeDestroy() {
 
-        this.heartbeat( false );
+        $mitt.off('*:clock', this.notify );
 
     },
 

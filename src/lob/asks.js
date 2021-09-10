@@ -16,7 +16,7 @@ export default class Asks {
         this.useref = useref;
         this.set = this.set_asks;
 
-        this.shadow = shadow;
+        // this.shadow = shadow;
 
         this.reset();
 
@@ -55,11 +55,14 @@ export default class Asks {
 
     set_asks( price, size, delta=false ) {
 
+        let diff = size;
+
         // First insert
         if ( !this.ticks.length ) {
-            this.ticks.push( this.shadow ? [ price, size, size ] : [ price, size ] );
+            // this.ticks.push( this.shadow ? [ price, size, size ] : [ price, size ] );
+            this.ticks.push( [ price, size ] );
             this.head = 0;
-            return;
+            return diff;
         }
 
         // Binary search our asks[] for closest price
@@ -72,12 +75,13 @@ export default class Asks {
         // Found an exact (existing price level) match?
         if ( item[0] == price ) {
             
-            let o = item[1];
+            diff = delta ? size : size - item[ 1 ];
+            // let o = item[1];
             // Update the size
             item[1] = delta ? Math.max( 0, item[1] + size ) : size;
 
-            if ( this.shadow )
-                item[2] = item[1] - o;
+            // if ( this.shadow )
+            //     item[2] = item[1] - o;
             
             if ( this.head == i && item[1] == 0 ) {
 
@@ -97,7 +101,7 @@ export default class Asks {
                 this.head = i;
             }
 
-            return;
+            return diff;
         }
 
         // New price level, insert it now
@@ -106,7 +110,8 @@ export default class Asks {
         let ins = before ? i : i + 1;
 
         // Insert the new price level at array index `ins`
-        this.ticks.splice( ins, 0, this.shadow ? [ price, size, size ] : [ price, size ] );
+        // this.ticks.splice( ins, 0, this.shadow ? [ price, size, size ] : [ price, size ] );
+        this.ticks.splice( ins, 0, [ price, size ] );
 
         // Inserted a new level in front of the head. `this.head` index must be updated now
         // Note that `this.head` index is invalid now anyway because of the insert
@@ -114,6 +119,8 @@ export default class Asks {
             this.head = this._nz_scan( ins );
             this.headcheck();
         }
+
+        return diff;
 
     }
 
@@ -167,7 +174,8 @@ export default class Asks {
             for ( let t=this.head; t<this.ticks.length; t++) {
 
                 if ( this.ticks[t][1] > 0 ) 
-                    book.push( this.shadow ? [ this.ticks[t][0], this.ticks[t][1], this.ticks[t][2] ] : [ this.ticks[t][0], this.ticks[t][1] ]  );
+                    book.push( [ this.ticks[t][0], this.ticks[t][1] ] );
+                    // book.push( this.shadow ? [ this.ticks[t][0], this.ticks[t][1], this.ticks[t][2] ] : [ this.ticks[t][0], this.ticks[t][1] ]  );
 
                 if ( book.length == levels ) break;
                 if ( maxprice && this.ticks[t][0] >= maxprice ) break;

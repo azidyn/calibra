@@ -42,13 +42,15 @@ export default {
         return {
             socket: null,
 
-            frequency: 500,     // Snapshot output frequency
-            timer: null,         
-
             orderbook: null,    // Current full reconstructed book
             snapshot: null,     // Last snapshot of above
+            delta: null,        // deltas from last update
 
-            ctx: null
+            levels: 5,
+
+            ctx: null,
+
+            str: 'test'
         }
     },
 
@@ -102,10 +104,12 @@ export default {
     methods: {
 
         update( data ) {
-            
+
+            this.deltas = data.deltas;
             this.orderbook = data.orderbook;
-            this.snapshot = data.orderbook.snapshot( 20 );
-            this.heartbeat( true );
+            this.snapshot = data.orderbook.snapshot( this.levels );
+
+            this.notifyhigh();
 
         },
 
@@ -167,11 +171,13 @@ export default {
             
         },
 
+        /* 
+            Called periodically from system clock 
+            sends: full book, snapshot
+        */ 
         notify() {
 
             for ( const L of this.aoutputs ) {
-
-                // $print(`${L}:snapshot`);
 
                 $mitt.emit(`${L}:snapshot`, { asset: this.asset, snapshot: this.snapshot, sourceId: this.id } );
                 $mitt.emit(`${L}:orderbook`, { asset: this.asset, orderbook: this.orderbook, sourceId: this.id } );
@@ -180,29 +186,22 @@ export default {
 
         },
 
-        heartbeat( start=true ) {
+        /* 
+            Called on EVERY lob update 
+            sends: full book, deltas
+        */
+        notifyhigh() {
 
-            if ( start ) {
+            for ( const L of this.aoutputs ) {
 
-                if ( this.timer )
-                    return;
-                
-                this.timer = setInterval( () => this.notify() , this.frequency)                
+                $mitt.emit(`${L}:orderbook:high`, { asset: this.asset, orderbook: this.orderbook, deltas: this.deltas, sourceId: this.id } );
 
-                return;
-
-            } else {
-
-                if ( !this.timer )
-                    return;
-
-                clearInterval( this.timer );
-                this.timer = null;
-
-                return;
             }
 
         },
+
+
+
 
         verify( contract ) {
 
@@ -219,8 +218,6 @@ export default {
 
         }
 
-
-
     },
 
     mounted() {
@@ -229,13 +226,15 @@ export default {
         this.socket.on(`orderbook:${this.symbol}`, this.update, this );
         this.socket.orderbook( this.symbol );        
 
+        $mitt.on('*:clock', this.notify );
+
     },
 
     beforeDestroy() {
 
-        this.heartbeat( false );
+        $mitt.off('*:clock', this.notify );
 
-        console.log(`Destroying ${this.exchange}:${this.symbol} orderbook`)
+        console.log(`Destroying ${this.exchange}:${this.symbol} orderbook`);
 
     },
 

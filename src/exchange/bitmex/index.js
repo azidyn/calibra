@@ -144,6 +144,8 @@ export default class bitmex extends EventEmitter {
 
         json = JSON.parse( message.data );
 
+        // $print( `${json.table} => ${json.action} [ ${json.data.length} ]` )
+
         switch( json.table ) {
 
             case "orderBookL2": 

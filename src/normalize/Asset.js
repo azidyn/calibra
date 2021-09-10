@@ -21,7 +21,7 @@ export default class Asset {
 
     findid( identifier ) {
 
-        return this.assets.find( f => f.identifier() == identifier );
+        return this.assets.find( f => f.identifier == identifier );
 
     }
 

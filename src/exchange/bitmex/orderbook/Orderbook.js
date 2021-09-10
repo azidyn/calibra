@@ -31,9 +31,14 @@ export default class Orderbook {
         // so we must keep track of it with a Map()
 
         this.id = new Map();
-        this.lob = new Book({ shadow: true });
+        this.lob = new Book();
 
+        this.deltaframe = [];
 
+    }
+
+    deltareset() {
+        this.deltaframe = [];
     }
 
     aggregate( depth, group ) {
@@ -57,13 +62,24 @@ export default class Orderbook {
             // Make a note of which id => price, need this for updates/deletes
             this.id.set( delta.id, delta.price );
 
-            // Apply the delta
+            /*
+                Old method
+                // Apply the delta
+                if ( delta.side == 'Buy' ) 
+                    this.lob.bid( delta.price, delta.size );
+                else 
+                    this.lob.ask( delta.price, delta.size );
+            */
+
             if ( delta.side == 'Buy' ) 
-                this.lob.bid( delta.price, delta.size );
+                this.deltaframe.push( [ delta.price, this.lob.bid( delta.price, delta.size ) ] );
             else 
-                this.lob.ask( delta.price, delta.size );
+                this.deltaframe.push( [ delta.price, this.lob.ask( delta.price, delta.size ) ] );
 
         }
+
+        // UNSORTED
+        return this.deltaframe;
         
     }
 
@@ -77,12 +93,22 @@ export default class Orderbook {
 
             if ( !price ) 
                 continue;
-                
+
+            /*
+                if ( delta.side == 'Buy' ) 
+                    this.lob.bid( price, delta.size )
+                else
+                    this.lob.ask( price, delta.size )
+            */
+
             if ( delta.side == 'Buy' ) 
-                this.lob.bid( price, delta.size )
+                this.deltaframe.push( [ price, this.lob.bid( price, delta.size ) ] );
             else
-                this.lob.ask( price, delta.size )
+                this.deltaframe.push( [ price, this.lob.ask( price, delta.size ) ] );
+    
         }       
+
+        return this.deltaframe;
 
     }
 
@@ -98,12 +124,13 @@ export default class Orderbook {
                 continue;
 
             if ( delta.side == 'Buy' ) 
-                this.lob.bid( price, 0 )
+                this.deltaframe.push( [ price, this.lob.bid( price, 0 ) ] );
             else
-                this.lob.ask( price, 0 )
+                this.deltaframe.push( [ price, this.lob.ask( price, 0 ) ] );
 
-        }             
+        }       
 
+        return this.deltaframe;
 
     }
 
