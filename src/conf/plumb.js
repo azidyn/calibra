@@ -4,6 +4,24 @@
 const connector =  [ "Straight", { /*stub: [40, 60],*/ gap: 10, cornerRadius: 5, alwaysRespectStubs: true } ];
 const connectorStyle = { stroke:'#666', strokeWidth: 3 };
 
+/*
+     I   o   I   o   I   o   I   o   I
+0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 
+0.1 o 					                0.1 o
+0.2 I					                0.2 I
+0.3 o					                0.3 o
+0.4 I					                0.4 I
+0.5 o 					                0.5 o
+0.6 I					                0.6 I
+0.7 o					                0.7 o
+0.8 I					                0.8 I
+0.9 o					                0.9 o
+1.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 
+     I   o   I   o   I   o   I   o   I
+
+
+*/
+
 module.exports = {
 
     endpoint: {
@@ -13,11 +31,34 @@ module.exports = {
             isTarget: true,
             // anchor:[ [ 0.2, 0, 0, -1 ],  [ 1, 0.2, 1, 0 ], [ 0.8, 1, 0, 1 ], [ 0, 0.8, -1, 0 ] ],
             anchor:  [
-                [0, 0.5, -1, 0 ],       // middle left
-                [0, 0.9, -1, 0 ],          // bottom left
-                [0,0, 0, -1],           // top left corner
-                [0.5,0, 0, -1],         // top middle
-                [0.9, 0, 0, -1 ]          // top right 
+                // [0, 0.9, -1, 0 ],          // bottom left
+                // [0, 0.5, -1, 0 ],       // middle left
+                // [0,0, 0, -1],           // top left corner
+                // [0.5,0, 0, -1],         // top middle
+                // [0.9, 0, 0, -1 ]          // top right 
+
+                [ 0.0, 0.8 ],               // Left hand side  bottom => top
+                [ 0.0, 0.6 ],
+                [ 0.0, 0.3 ],
+                [ 0.0, 0.2 ],
+
+                [ 0.1, 0.0 ],               // Top side, left => right
+                [ 0.3, 0.0 ],
+                [ 0.5, 0.0 ],
+                [ 0.7, 0.0 ],
+                [ 0.9, 0.0 ],
+
+                [ 1.0, 0.2 ],               // Right hand side top => bottom
+                [ 1.0, 0.4 ],
+                [ 1.0, 0.6 ],
+                [ 1.0, 0.8 ],
+
+                [ 0.9, 1.0 ],               // Bottom side right => left
+                [ 0.7, 1.0 ],
+                [ 0.5, 1.0 ],
+                [ 0.3, 1.0 ],
+                [ 0.1, 1.0 ],
+
             ],
 
             // anchor: 'Continuous',
@@ -68,12 +109,54 @@ module.exports = {
                 fill: 'gray'
             },
 
+
+/*
+     I   o   I   o   I   o   I   o   I
+0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 
+0.1 o 					                0.1 o
+0.2 I					                0.2 I
+0.3 o					                0.3 o
+0.4 I					                0.4 I
+0.5 o 					                0.5 o
+0.6 I					                0.6 I
+0.7 o					                0.7 o
+0.8 I					                0.8 I
+0.9 o					                0.9 o
+1.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 
+     I   o   I   o   I   o   I   o   I
+
+
+*/            
+
             anchor:[
-                [ 1, 0.5, 1, 0 ],       // middle right
-                [ 0.1, 1, 0, 1 ],       // bottom left
-                [ 0.5, 1, 0, 1 ],       // bottom middle
-                [ 1, 1, 1, 0 ],         // bottom right
-                [ 1, 0.1, 1, 0 ]        // top right
+                // [ 1, 0.5, 1, 0 ],       // middle right
+                // [ 0.1, 1, 0, 1 ],       // bottom left
+                // [ 0.5, 1, 0, 1 ],       // bottom middle
+                // [ 1, 1, 1, 0 ],         // bottom right
+                // [ 1, 0.1, 1, 0 ]        // top right
+
+                [ 0.0, 0.9 ],           // Left hand side bottom => top 
+                [ 0.0, 0.7 ],
+                [ 0.0, 0.5 ],
+                [ 0.0, 0.3 ],
+                [ 0.0, 0.1 ],
+
+                [ 0.2, 0.0 ],           // Top side left => right
+                [ 0.4, 0.0 ],
+                [ 0.6, 0.0 ],
+                [ 0.8, 0.0 ],
+
+                [ 1.0, 0.1 ],           // Right hand side top => bottom
+                [ 1.0, 0.3 ],
+                [ 1.0, 0.5 ],
+                [ 1.0, 0.7 ],
+                [ 1.0, 0.9 ],
+
+                [ 0.8, 1.0 ],
+                [ 0.6, 1.0 ],
+                [ 0.4, 1.0 ],
+                [ 0.2, 1.0 ]
+
             ],
 
             // anchors:          [ "Perimeter", { shape: "Rectangle"  } ],            

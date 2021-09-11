@@ -74,7 +74,7 @@ export default {
             init: false,
             clock: {
                 handle: null,
-                frequency: 500
+                frequency: 100
             },
             comps: [],
         }

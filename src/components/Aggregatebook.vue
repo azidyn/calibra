@@ -1,14 +1,8 @@
 <template>
     <div>
         <Title :text="`Aggregate`"/>
-        <!-- inputs:
-        {{ ainputs }}
-        <br/>
-        outputs:
-        {{ aoutputs }}        
-         -->
          sources: {{ Object.keys( this.ainputs ).length }}, tick = {{ tick }}, dp = {{ dp }}, levels = {{ levels }}
-         <br/>
+         <!-- <br/>
          asks:
         <div>
             <div v-for="(ask, index) in megaask" :key="`a${index}`" >
@@ -23,7 +17,7 @@
                 {{ bid }}
             </div>
     
-        </div>
+        </div> -->
     </div>
 </template>
 

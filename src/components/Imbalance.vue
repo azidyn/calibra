@@ -2,7 +2,7 @@
   
     <div>
         <Title :text="`Imbalance (${Object.keys(this.connections.inputs).length})`"></Title>
-        {{ multi }}
+        <!-- {{ multi }} -->
     </div>
 
 </template>
@@ -37,8 +37,6 @@ export default {
     methods: {
 
         update( data ) {
-
-            console.log('got snapshot', data )
 
             const snapshot = data.snapshot;
 

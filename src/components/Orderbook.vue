@@ -1,16 +1,11 @@
 <template>
     <div>
         <Title :text="`${exchange}:${symbol}`"/>
-
-        {{ config }}
-        <!-- inputs {{ ainputs }}
-        <br/>
-        outputs {{ aoutputs }} -->
-        <div v-if="snapshot">
+        <!-- <div v-if="snapshot">
             <div v-for="(bid, index) in snapshot.bid" :key="index">
                 {{ bid }}
             </div>
-        </div>
+        </div> -->
             <!-- <canvas ref="display" :width="canvsize.width" :height="canvsize.height"></canvas> -->
     </div>
 </template>
@@ -222,9 +217,9 @@ export default {
 
     mounted() {
 
-        this.socket = $network.socket( this.exchange );
-        this.socket.on(`orderbook:${this.symbol}`, this.update, this );
-        this.socket.orderbook( this.symbol );        
+        // this.socket = $network.socket( this.exchange );
+        // this.socket.on(`orderbook:${this.symbol}`, this.update, this );
+        // this.socket.orderbook( this.symbol );        
 
         $mitt.on('*:clock', this.notify );
 

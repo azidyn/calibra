@@ -72,9 +72,9 @@ export default class Orderbook {
             */
 
             if ( delta.side == 'Buy' ) 
-                this.deltaframe.push( [ delta.price, this.lob.bid( delta.price, delta.size ) ] );
+                this.deltaframe.push( [ delta.price, this.lob.bid( delta.price, delta.size ), 0 ] ); // 0 = bid, 1 = ask
             else 
-                this.deltaframe.push( [ delta.price, this.lob.ask( delta.price, delta.size ) ] );
+                this.deltaframe.push( [ delta.price, this.lob.ask( delta.price, delta.size ), 1 ] );
 
         }
 
@@ -102,9 +102,9 @@ export default class Orderbook {
             */
 
             if ( delta.side == 'Buy' ) 
-                this.deltaframe.push( [ price, this.lob.bid( price, delta.size ) ] );
+                this.deltaframe.push( [ price, this.lob.bid( price, delta.size ), 0 ] );
             else
-                this.deltaframe.push( [ price, this.lob.ask( price, delta.size ) ] );
+                this.deltaframe.push( [ price, this.lob.ask( price, delta.size ), 1 ] );
     
         }       
 
@@ -124,9 +124,9 @@ export default class Orderbook {
                 continue;
 
             if ( delta.side == 'Buy' ) 
-                this.deltaframe.push( [ price, this.lob.bid( price, 0 ) ] );
+                this.deltaframe.push( [ price, this.lob.bid( price, 0 ), 0 ] );
             else
-                this.deltaframe.push( [ price, this.lob.ask( price, 0 ) ] );
+                this.deltaframe.push( [ price, this.lob.ask( price, 0 ), 1 ] );
 
         }       
 
